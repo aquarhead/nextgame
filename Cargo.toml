@@ -1,0 +1,22 @@
+[package]
+name = "nextgame"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+worker = { version = "0.3.0" }
+serde = "1"
+minijinja = "2"
+minijinja-embed = "2"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
+codegen-units = 1
+
+[build-dependencies]
+minijinja-embed = "2"
