@@ -2,9 +2,13 @@ name = "nextgame"
 main = "build/worker/shim.mjs"
 compatibility_date = "2024-05-13"
 
-kv_namespaces = [
-  { binding = "nextgame", id = "57b3e4d2bd044a3a9707bc91f1c1c790" },
-]
+[[kv_namespaces]]
+binding = "teams"
+id = "6aac60b72257464eaefcbd3ab4ef76c6"
+
+[[kv_namespaces]]
+binding = "games"
+id = "2db8a216518d4e178d3d253957dd1459"
 
 [build]
 command = "cargo install -q worker-build && worker-build --release"

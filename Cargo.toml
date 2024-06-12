@@ -8,9 +8,13 @@ crate-type = ["cdylib"]
 
 [dependencies]
 worker = { version = "0.3.0" }
+console_error_panic_hook = "0.1"
 serde = "1"
 minijinja = "2"
 minijinja-embed = "2"
+getrandom = { version = "*", features = ["js"] }
+sha3 = { version = "0.10", default-features = false }
+hex = { version = "0.4" }
 
 [profile.release]
 opt-level = "s"
