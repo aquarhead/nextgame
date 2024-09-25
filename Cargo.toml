@@ -1,5 +1,9 @@
 [package]
 name = "nextgame"
+description = "Who's playing?!"
+authors = ["LOU Xun <aquarhead@gmail.com>"]
+repository = "https://github.com/aquarhead/nextgame"
+license = "MIT"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,7 +11,7 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-worker = { version = "0.3.0" }
+worker = { version = "0.4.0" }
 console_error_panic_hook = "0.1"
 serde = "1"
 minijinja = "2"

@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+
+{% include 'head.html' %}
+
+<body>
+  <section class="hero is-info">
+    <div class="hero-body">
+      <h1 class="title">
+        Successfully created team: {{ team_name }}
+      </h1>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container is-max-desktop">
+      <div class="notification is-warning">
+        <div class="content is-medium">
+          <p><b>IMPORTANT!</b> This is the only time we will show the admin link, make sure to save it:</p>
+          <p><code>{{ admin_link }}</code></p>
+          <p>Use this link to manage players in the team and other settings.</p>
+        </div>
+      </div>
+
+      <div class="notification is-medium is-primary">
+        <div class="content">
+          <p>Share the (next)game registration page with your group:</p>
+          <p><code>{{ team_link }}</code></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% include 'footer.html' %}
+</body>
+
+</html>

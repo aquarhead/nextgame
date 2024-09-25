@@ -5,37 +5,52 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>nextgame</title>
+  <title>nextgame :: {{ team_name }}</title>
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css">
 </head>
 
 <body>
-  <section class="hero is-medium is-info">
+  <section class="hero is-info">
     <div class="hero-body">
       <h1 class="title">
-        nextgame
+        nextgame :: {{ team_name }}
       </h1>
       <p class="subtitle">
-        Who's playing?!
+        Manage players, and more..
       </p>
     </div>
   </section>
 
   <section class="section">
     <div class="container is-max-desktop">
-      <form action="/new_team" method="post">
+      <form action="/player" method="post">
         <div class="field has-addons">
           <div class="control is-expanded">
-            <input type="text" name="team_name" class="input is-large" placeholder="New team name">
+            <input type="text" name="team_name" class="input is-medium" placeholder="New player">
           </div>
           <div class="control">
-            <button type="submit" class="button is-large is-primary">
-              Create new team!
+            <button type="submit" class="button is-medium is-primary">
+              Add player
             </button>
           </div>
         </div>
       </form>
+    </div>
+
+    <div class="container is-max-desktop">
+      <table class="table">
+        <tbody>
+          <tr>
+            <th>
+              Player
+            </th>
+            <td>
+              ..
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </section>
 

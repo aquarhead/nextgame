@@ -3,87 +3,129 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use worker::*;
 
+mod random;
+
+type PlayerID = String;
+
 #[derive(Serialize, Deserialize, Debug)]
 struct Team {
   name: String,
   secret: String,
-  next_game: String,
-  players: Vec<String>,
+  next_game: Option<String>,
+  players: HashMap<PlayerID, String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Game {
-  players: HashMap<String, bool>,
+  players: HashMap<PlayerID, bool>,
+}
+
+struct AppCtx {
+  mje: MiniJinjaEnv<'static>,
 }
 
 #[event(fetch)]
 async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
   console_error_panic_hook::set_once();
-  let router = Router::new();
+
+  let mut mje = MiniJinjaEnv::new();
+  minijinja_embed::load_templates!(&mut mje);
+
+  let router = Router::with_data(AppCtx { mje });
 
   router
     .get_async("/", home)
-    .get_async("/new", new)
+    .post_async("/new_team", new_team)
     .get_async("/admin/:teamkey/:teamsecret", admin)
+    .post_async("/admin/:teamkey/:teamsecret/player", add_player)
+    .delete_async("/admin/:teamkey/:teamsecret/player/:player", delete_player)
     .get_async("/team/:teamkey", team)
+    .post_async("/team/:teamkey/new_game", new_game)
     .run(req, env)
     .await
 }
 
-async fn home(_req: Request, _: RouteContext<()>) -> Result<Response> {
-  let mut mje = MiniJinjaEnv::new();
-  minijinja_embed::load_templates!(&mut mje);
-  let template = mje.get_template("home.html").unwrap();
+async fn home(_req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+  let template = ctx.data.mje.get_template("home.html").unwrap();
 
   Response::from_html(template.render(mjctx!()).unwrap())
 }
 
-async fn new(_: Request, ctx: RouteContext<()>) -> Result<Response> {
-  fn gen_rand() -> String {
-    use sha3::{
-      digest::{ExtendableOutput, Update, XofReader},
-      Shake128,
-    };
-    let mut buf = [0u8; 32];
-    getrandom::getrandom(&mut buf).unwrap();
-
-    let mut hasher = Shake128::default();
-    hasher.update(&buf);
-    let mut reader = hasher.finalize_xof();
-    let mut res1 = [0u8; 10];
-    reader.read(&mut res1);
-    hex::encode(res1)
+async fn new_team(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+  let mut r = req.clone_mut()?;
+  let f = r.form_data().await?;
+  let name = f.get_field("team_name").unwrap_or_default();
+  if name.len() == 0 {
+    return Response::error("team name can't be empty", 400);
   }
 
-  let next_game = gen_rand();
-  let game = Game {
-    players: HashMap::new(),
-  };
-  match ctx.kv("games")?.put(&next_game, game)?.execute().await {
-    Ok(_) => {}
-    Err(_) => return Response::error("failed to create first game", 500),
-  };
+  let key = random::hex_string();
+  // TODO: check key existence
+  let secret = random::hex_string();
 
-  let key = gen_rand();
-  let secret = gen_rand();
-  println!("{} {}", &key, &secret);
+  let base_url = req.url()?;
+  let admin_link = {
+    let mut al = base_url.clone();
+    al.set_path(&format!("/admin/{}/{}", &key, &secret));
+    al.to_string()
+  };
+  let team_link = {
+    let mut tl = base_url.clone();
+    tl.set_path(&format!("/team/{}", &key));
+    tl.to_string()
+  };
+  let team_name = name.clone();
+
   let new_team = Team {
-    name: "new team".to_string(),
+    name,
     secret,
-    next_game,
-    players: Vec::new(),
+    next_game: None,
+    players: HashMap::new(),
   };
 
   return match ctx.kv("teams")?.put(&key, new_team)?.execute().await {
-    Ok(_) => Response::ok("created!"),
+    Ok(_) => {
+      let template = ctx.data.mje.get_template("new_team.html").unwrap();
+
+      template
+        .render(mjctx! {
+          team_name,
+          admin_link,
+          team_link,
+        })
+        .map_or(
+          Response::error("failed to render new_team page", 500),
+          Response::from_html,
+        )
+    }
     Err(_) => Response::error("failed to create team", 500),
   };
 }
 
-async fn admin(_: Request, _: RouteContext<()>) -> Result<Response> {
+async fn admin(_: Request, _: RouteContext<AppCtx>) -> Result<Response> {
   Response::empty()
 }
 
-async fn team(_: Request, _: RouteContext<()>) -> Result<Response> {
+async fn add_player(_: Request, _: RouteContext<AppCtx>) -> Result<Response> {
+  Response::empty()
+}
+
+async fn delete_player(_: Request, _: RouteContext<AppCtx>) -> Result<Response> {
+  Response::empty()
+}
+
+async fn team(_: Request, _: RouteContext<AppCtx>) -> Result<Response> {
+  Response::empty()
+}
+
+async fn new_game(_: Request, _: RouteContext<AppCtx>) -> Result<Response> {
+  // let next_game = random::hex_string();
+  // let game = Game {
+  //   players: HashMap::new(),
+  // };
+  // match ctx.kv("games")?.put(&next_game, game)?.execute().await {
+  //   Ok(_) => {}
+  //   Err(_) => return Response::error("failed to create first game", 500),
+  // };
   Response::empty()
 }
