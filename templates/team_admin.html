@@ -1,14 +1,7 @@
 <!doctype html>
 <html>
 
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <title>nextgame :: {{ team_name }}</title>
-
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css">
-</head>
+{% include 'head.html' %}
 
 <body>
   <section class="hero is-info">
@@ -24,10 +17,10 @@
 
   <section class="section">
     <div class="container is-max-desktop">
-      <form action="/player" method="post">
+      <form action="/admin/{{ key }}/{{ secret }}/player" method="post">
         <div class="field has-addons">
           <div class="control is-expanded">
-            <input type="text" name="team_name" class="input is-medium" placeholder="New player">
+            <input type="text" name="player_name" class="input is-medium" placeholder="Player name">
           </div>
           <div class="control">
             <button type="submit" class="button is-medium is-primary">
@@ -41,14 +34,19 @@
     <div class="container is-max-desktop">
       <table class="table">
         <tbody>
+          {% for (id, pn) in players %}
           <tr>
             <th>
-              Player
+              {{ pn }}
             </th>
             <td>
-              ..
+              <button action="/admin/{{ key }}/{{ secret }}/player/{{ id }}" method="delete" type="submit"
+                class="button is-danger">
+                Delete
+              </button>
             </td>
           </tr>
+          {% endfor %}
         </tbody>
       </table>
     </div>

@@ -13,7 +13,7 @@ crate-type = ["cdylib"]
 [dependencies]
 worker = { version = "0.4.0" }
 console_error_panic_hook = "0.1"
-serde = "1"
+serde = { version = "1", features = ["derive"] }
 minijinja = "2"
 minijinja-embed = "2"
 getrandom = { version = "*", features = ["js"] }

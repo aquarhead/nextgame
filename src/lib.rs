@@ -17,7 +17,9 @@ struct Team {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Game {
+  description: String,
   players: HashMap<PlayerID, bool>,
+  guests: Vec<String>,
 }
 
 struct AppCtx {
@@ -102,19 +104,118 @@ async fn new_team(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
   };
 }
 
-async fn admin(_: Request, _: RouteContext<AppCtx>) -> Result<Response> {
+async fn admin(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+  let auth_err = Response::error("team not found", 404);
+
+  let key = ctx.param("teamkey").unwrap();
+  let secret = ctx.param("teamsecret").unwrap();
+
+  let team = {
+    let t = ctx.kv("teams")?.get(key).json::<Team>().await?;
+    if t.is_none() {
+      return auth_err;
+    }
+    t.unwrap()
+  };
+
+  if &team.secret != secret {
+    return auth_err;
+  }
+
+  let template = ctx.data.mje.get_template("team_admin.html").unwrap();
+
+  template
+    .render(mjctx! {
+      team_name => team.name,
+      key,
+      secret,
+      players => team.players,
+    })
+    .map_or(
+      Response::error("failed to render team_admin page", 500),
+      Response::from_html,
+    )
+}
+
+async fn add_player(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+  let auth_err = Response::error("team not found", 404);
+
+  let key = ctx.param("teamkey").unwrap();
+  let secret = ctx.param("teamsecret").unwrap();
+
+  let teams_kv = ctx.kv("teams")?;
+
+  let mut team = {
+    let t = teams_kv.get(key).json::<Team>().await?;
+    if t.is_none() {
+      return auth_err;
+    }
+    t.unwrap()
+  };
+
+  if &team.secret != secret {
+    return auth_err;
+  }
+
+  let mut r = req.clone_mut()?;
+  let f = r.form_data().await?;
+  let name = f.get_field("player_name").unwrap_or_default();
+  if name.len() == 0 {
+    return Response::error("player name can't be empty", 400);
+  }
+
+  let pid = random::hex_string();
+  team.players.insert(pid, name);
+
+  return match teams_kv.put(key, team)?.execute().await {
+    Ok(_) => {
+      let mut admin_link = req.url()?.clone();
+      admin_link.set_path(&format!("/admin/{}/{}", key, secret));
+
+      Response::redirect(admin_link)
+    }
+    Err(_) => Response::error("failed to add player to team", 500),
+  };
+}
+
+async fn delete_player(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+  let auth_err = Response::error("team not found", 404);
+
+  let key = ctx.param("teamkey").unwrap();
+  let secret = ctx.param("teamsecret").unwrap();
+
+  let team = {
+    let t = ctx.kv("teams")?.get(key).json::<Team>().await?;
+    if t.is_none() {
+      return auth_err;
+    }
+    t.unwrap()
+  };
+
+  if &team.secret != secret {
+    return auth_err;
+  }
+
   Response::empty()
 }
 
-async fn add_player(_: Request, _: RouteContext<AppCtx>) -> Result<Response> {
-  Response::empty()
-}
+async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+  let not_found = Response::error("team not found", 404);
 
-async fn delete_player(_: Request, _: RouteContext<AppCtx>) -> Result<Response> {
-  Response::empty()
-}
+  let key = ctx.param("teamkey").unwrap();
 
-async fn team(_: Request, _: RouteContext<AppCtx>) -> Result<Response> {
+  let _team = {
+    let t = ctx.kv("teams")?.get(key).json::<Team>().await?;
+    if t.is_none() {
+      return not_found;
+    }
+    t.unwrap()
+  };
+
+  // TODO: check players list change
+
+  // TODO: guest
+
   Response::empty()
 }
 
@@ -127,5 +228,7 @@ async fn new_game(_: Request, _: RouteContext<AppCtx>) -> Result<Response> {
   //   Ok(_) => {}
   //   Err(_) => return Response::error("failed to create first game", 500),
   // };
+
+  // TODO: add TTL
   Response::empty()
 }
