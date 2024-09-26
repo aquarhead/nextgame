@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 // use std::result::Result as StdRst;
 
 use minijinja::{context as mjctx, Environment as MiniJinjaEnv};
@@ -35,8 +35,9 @@ struct Team {
 struct Game {
   description: String,
   // see Team struct comment
-  players: HashMap<PlayerID, bool>,
+  players: HashMap<PlayerID, bool>, // TODO: maybe???
   guests: Vec<String>,
+  // TODO: comments??
 }
 
 struct AppCtx {
@@ -267,7 +268,7 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
   let template = ctx.data.mje.get_template("team.html").unwrap();
 
   if let Some(ng_key) = team.next_game {
-    let ng: Game = {
+    let mut ng: Game = {
       let g = games_kv.get(&ng_key).text().await?;
       if g.is_none() {
         // MAYBE: unset the next_game field on the Team?
@@ -282,9 +283,25 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       serde_json::from_str(&g).unwrap()
     };
 
-    // TODO: check players list change
-
-    // TODO: guest
+    let tp_set: HashSet<_> = team.players.keys().cloned().collect();
+    let gp_set: HashSet<_> = ng.players.keys().cloned().collect();
+    let new_players = tp_set
+      .difference(&gp_set)
+      .map(|pid| (pid.to_string(), false))
+      .collect::<HashMap<_, _>>();
+    if new_players.len() > 0 {
+      ng.players.extend(new_players.into_iter());
+      match games_kv
+        .put(&ng_key, serde_json::to_string(&ng).unwrap())?
+        .execute()
+        .await
+      {
+        Ok(_) => {}
+        Err(_) => {
+          return Response::error("failed to update player list", 500);
+        }
+      }
+    }
 
     let playing_count = ng.players.values().filter(|p| **p).count() + ng.guests.len();
 
@@ -453,7 +470,7 @@ async fn not_play(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
 
         Response::redirect(team_link)
       }
-      Err(_) => Response::error("failed to set play", 500),
+      Err(_) => Response::error("failed to set not_play", 500),
     }
   } else {
     Response::error("game not found", 404)
