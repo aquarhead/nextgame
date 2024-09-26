@@ -30,7 +30,10 @@ jobs:
         key: ${{ runner.os }}-${{ hashFiles('Cargo.lock') }}-${{ hashFiles('package-lock.json') }}
         restore-keys: ${{ runner.os }}-
     - uses: dtolnay/rust-toolchain@stable
-    - uses: cloudflare/wrangler-action@v3
-      with:
-        apiToken: ${{ secrets.CF_TOKEN }}
-        accountId: ${{ secrets.CF_ACCOUNT_ID }}
+    - name: Deploy to workers
+      env:
+        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        CLOUDFLARE_API_TOKEN: ${{ secrets.CF_TOKEN }}
+      run: |
+        npm install
+        npx wrangler deploy
