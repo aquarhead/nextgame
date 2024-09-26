@@ -31,26 +31,24 @@
         </h2>
       </div>
     </div>
-  </section>
 
-  <section class="section">
     <div class="container is-max-desktop">
-      <table class="table is-striped is-hoverable is-fullwidth">
+      <table class="table is-bordered is-striped is-hoverable is-fullwidth">
         <tbody>
-          {% for id, playing in ng.players|items %}
+          {% for (name, pid, playing) in players %}
           <tr>
             <th class="is-two-thirds">
-              {{ players|attr(id)|default("Unknown player") }}
+              {{ name }}
             </th>
             <td>
               {% if playing %}
-              <form action="/team/{{ key }}/player/{{ id }}/not_play" method="post">
+              <form action="/team/{{ key }}/player/{{ pid }}/not_play" method="post">
                 <button type="submit" class="button is-info">
                   Playing
                 </button>
               </form>
               {% else %}
-              <form action="/team/{{ key }}/player/{{ id }}/play" method="post">
+              <form action="/team/{{ key }}/player/{{ pid }}/play" method="post">
                 <button type="submit" class="button is-danger">
                   Not playing
                 </button>

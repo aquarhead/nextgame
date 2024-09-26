@@ -304,6 +304,19 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       }
     }
 
+    let mut players = ng
+      .players
+      .iter()
+      .map(|(pid, playing)| {
+        (
+          team.players.get(pid).cloned().unwrap_or("Unknown player".to_string()),
+          pid,
+          playing,
+        )
+      })
+      .collect::<Vec<_>>();
+    players.sort();
+
     let playing_count = ng.players.values().filter(|p| **p).count() + ng.guests.len();
 
     template
@@ -312,7 +325,7 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
         key,
         ng,
         playing_count,
-        players => team.players,
+        players,
       })
       .map_or(Response::error("failed to render team page", 500), Response::from_html)
   } else {
