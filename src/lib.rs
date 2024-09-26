@@ -319,11 +319,25 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
 
     let playing_count = ng.players.values().filter(|p| **p).count() + ng.guests.len();
 
+    let description = {
+      use pulldown_cmark::{Options, Parser};
+
+      let mut options = Options::empty();
+      options.insert(Options::ENABLE_GFM);
+      let parser = Parser::new_ext(&ng.description, options);
+
+      // Write to String buffer.
+      let mut html_output = String::new();
+      pulldown_cmark::html::push_html(&mut html_output, parser);
+      html_output
+    };
+
     template
       .render(mjctx! {
         team_name => team.name,
         key,
         ng,
+        description,
         playing_count,
         players,
       })

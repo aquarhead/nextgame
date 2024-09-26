@@ -21,6 +21,7 @@ minijinja-embed = "2"
 getrandom = { version = "*", features = ["js"] }
 sha3 = { version = "0.10", default-features = false }
 hex = { version = "0.4" }
+pulldown-cmark = "0.12"
 
 [profile.release]
 opt-level = "s"

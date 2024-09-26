@@ -20,8 +20,8 @@
   <section class="section">
     <div class="container is-max-desktop">
       <div class="content is-large">
-        <blockquote>
-          {{ ng.description }}
+        <blockquote class="pt-1">
+          {{ description|safe }}
         </blockquote>
       </div>
 
@@ -78,6 +78,9 @@
             <textarea name="description" class="textarea is-medium"
               placeholder="Describe the time, location, etc.. of the nextgame"></textarea>
           </div>
+          <p class="help">Supports <a target="_blank"
+              href="https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax">GFM
+              syntax</a>.</p>
         </div>
         <div class="field is-grouped is-grouped-centered">
           <div class="control">
