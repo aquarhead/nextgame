@@ -34,7 +34,7 @@ struct Team {
 #[derive(Serialize, Deserialize, Debug)]
 struct Game {
   description: String,
-  // see above
+  // see Team struct comment
   players: HashMap<PlayerID, bool>,
   guests: Vec<String>,
 }
@@ -60,6 +60,8 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
     .post_async("/admin/:teamkey/:teamsecret/player/:playerid/delete", delete_player)
     .get_async("/team/:teamkey", team)
     .post_async("/team/:teamkey/new_game", new_game)
+    .post_async("/team/:teamkey/player/:playerid/play", play)
+    .post_async("/team/:teamkey/player/:playerid/not_play", not_play)
     .run(req, env)
     .await
 }
@@ -250,31 +252,210 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
 
   let key = ctx.param("teamkey").unwrap();
 
-  let _team = {
-    let t = ctx.kv("teams")?.get(key).json::<Team>().await?;
+  let teams_kv = ctx.kv("teams")?;
+  let games_kv = ctx.kv("games")?;
+
+  let team: Team = {
+    let t = teams_kv.get(key).text().await?;
     if t.is_none() {
       return not_found;
     }
-    t.unwrap()
+    let t = t.unwrap();
+    serde_json::from_str(&t).unwrap()
   };
 
-  // TODO: check players list change
+  let template = ctx.data.mje.get_template("team.html").unwrap();
 
-  // TODO: guest
+  if let Some(ng_key) = team.next_game {
+    let ng: Game = {
+      let g = games_kv.get(&ng_key).text().await?;
+      if g.is_none() {
+        // MAYBE: unset the next_game field on the Team?
+        return template
+          .render(mjctx! {
+            team_name => team.name,
+            key,
+          })
+          .map_or(Response::error("failed to render team page", 500), Response::from_html);
+      }
+      let g = g.unwrap();
+      serde_json::from_str(&g).unwrap()
+    };
 
-  Response::empty()
+    // TODO: check players list change
+
+    // TODO: guest
+
+    let playing_count = ng.players.values().filter(|p| **p).count() + ng.guests.len();
+
+    template
+      .render(mjctx! {
+        team_name => team.name,
+        key,
+        ng,
+        playing_count,
+        players => team.players,
+      })
+      .map_or(Response::error("failed to render team page", 500), Response::from_html)
+  } else {
+    template
+      .render(mjctx! {
+        team_name => team.name,
+        key,
+      })
+      .map_or(Response::error("failed to render team page", 500), Response::from_html)
+  }
 }
 
-async fn new_game(_: Request, _: RouteContext<AppCtx>) -> Result<Response> {
-  // let next_game = random::hex_string();
-  // let game = Game {
-  //   players: HashMap::new(),
-  // };
-  // match ctx.kv("games")?.put(&next_game, game)?.execute().await {
-  //   Ok(_) => {}
-  //   Err(_) => return Response::error("failed to create first game", 500),
-  // };
+async fn new_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+  let not_found = Response::error("team not found", 404);
 
-  // TODO: add TTL
-  Response::empty()
+  let key = ctx.param("teamkey").unwrap();
+
+  let teams_kv = ctx.kv("teams")?;
+  let games_kv = ctx.kv("games")?;
+
+  let mut team: Team = {
+    let t = teams_kv.get(key).text().await?;
+    if t.is_none() {
+      return not_found;
+    }
+    let t = t.unwrap();
+    serde_json::from_str(&t).unwrap()
+  };
+
+  let mut r = req.clone_mut()?;
+  let f = r.form_data().await?;
+  let description = f.get_field("description").unwrap_or_default();
+
+  let ng = Game {
+    description,
+    players: team.players.iter().map(|(k, _)| (k.to_string(), false)).collect(),
+    guests: Vec::new(),
+  };
+
+  let ng_key = random::hex_string();
+
+  if games_kv
+    .put(&ng_key, serde_json::to_string(&ng).unwrap())?
+    // MAYBE: this may need adjustment
+    .expiration_ttl(30 * 86400)
+    .execute()
+    .await
+    .is_err()
+  {
+    return Response::error("failed to create next game", 500);
+  }
+
+  team.next_game = Some(ng_key);
+
+  return match teams_kv
+    .put(key, serde_json::to_string(&team).unwrap())?
+    .execute()
+    .await
+  {
+    Ok(_) => {
+      let mut team_link = req.url()?.clone();
+      team_link.set_path(&format!("/team/{}", key));
+
+      Response::redirect(team_link)
+    }
+    Err(_) => Response::error("failed to set next game for team", 500),
+  };
+}
+
+async fn play(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+  let key = ctx.param("teamkey").unwrap();
+  let pid = ctx.param("playerid").unwrap();
+
+  let teams_kv = ctx.kv("teams")?;
+  let games_kv = ctx.kv("games")?;
+
+  let team: Team = {
+    let t = teams_kv.get(key).text().await?;
+    if t.is_none() {
+      return Response::error("team not found", 404);
+    }
+    let t = t.unwrap();
+    serde_json::from_str(&t).unwrap()
+  };
+
+  if let Some(ng_key) = team.next_game {
+    let mut ng: Game = {
+      let g = games_kv.get(&ng_key).text().await?;
+      if g.is_none() {
+        return Response::error("game does not exist anymore", 404);
+      }
+      let g = g.unwrap();
+      serde_json::from_str(&g).unwrap()
+    };
+
+    if let Some(p) = ng.players.get_mut(pid) {
+      *p = true;
+    }
+
+    match games_kv
+      .put(&ng_key, serde_json::to_string(&ng).unwrap())?
+      .execute()
+      .await
+    {
+      Ok(_) => {
+        let mut team_link = req.url()?.clone();
+        team_link.set_path(&format!("/team/{}", key));
+
+        Response::redirect(team_link)
+      }
+      Err(_) => Response::error("failed to set play", 500),
+    }
+  } else {
+    Response::error("game not found", 404)
+  }
+}
+
+async fn not_play(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+  let key = ctx.param("teamkey").unwrap();
+  let pid = ctx.param("playerid").unwrap();
+
+  let teams_kv = ctx.kv("teams")?;
+  let games_kv = ctx.kv("games")?;
+
+  let team: Team = {
+    let t = teams_kv.get(key).text().await?;
+    if t.is_none() {
+      return Response::error("team not found", 404);
+    }
+    let t = t.unwrap();
+    serde_json::from_str(&t).unwrap()
+  };
+
+  if let Some(ng_key) = team.next_game {
+    let mut ng: Game = {
+      let g = games_kv.get(&ng_key).text().await?;
+      if g.is_none() {
+        return Response::error("game does not exist anymore", 404);
+      }
+      let g = g.unwrap();
+      serde_json::from_str(&g).unwrap()
+    };
+
+    if let Some(p) = ng.players.get_mut(pid) {
+      *p = false;
+    }
+
+    match games_kv
+      .put(&ng_key, serde_json::to_string(&ng).unwrap())?
+      .execute()
+      .await
+    {
+      Ok(_) => {
+        let mut team_link = req.url()?.clone();
+        team_link.set_path(&format!("/team/{}", key));
+
+        Response::redirect(team_link)
+      }
+      Err(_) => Response::error("failed to set play", 500),
+    }
+  } else {
+    Response::error("game not found", 404)
+  }
 }

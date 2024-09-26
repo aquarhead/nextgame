@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+
+{% include 'head.html' %}
+
+<body>
+  <section class="hero is-info">
+    <div class="hero-body">
+      <h1 class="title">
+        nextgame :: {{ team_name }}
+      </h1>
+      <p class="subtitle">
+        Who's playing?!
+      </p>
+    </div>
+  </section>
+
+  {% if ng %}
+
+  <section class="section">
+    <div class="container is-max-desktop">
+      <div class="content is-large">
+        <blockquote>
+          {{ ng.description }}
+        </blockquote>
+      </div>
+
+      <div class="content">
+        <h2 class="title">
+          {{ playing_count }} players playing!
+        </h2>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container is-max-desktop">
+      <table class="table is-striped is-hoverable is-fullwidth">
+        <tbody>
+          {% for id, playing in ng.players|items %}
+          <tr>
+            <th class="is-two-thirds">
+              {{ players|attr(id) }}
+            </th>
+            <td>
+              {% if playing %}
+              <form action="/team/{{ key }}/player/{{ id }}/not_play" method="post">
+                <button type="submit" class="button is-info">
+                  Playing
+                </button>
+              </form>
+              {% else %}
+              <form action="/team/{{ key }}/player/{{ id }}/play" method="post">
+                <button type="submit" class="button is-danger">
+                  Not playing
+                </button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {% else %}
+
+  <section class="section">
+    <div class="container is-max-desktop">
+      <form action="/team/{{ key }}/new_game" method="post">
+        <div class="field">
+          <div class="control">
+            <textarea name="description" class="textarea is-medium"
+              placeholder="Describe the time, location, etc.. of the nextgame"></textarea>
+          </div>
+        </div>
+        <div class="field is-grouped is-grouped-centered">
+          <div class="control">
+            <button type="submit" class="button is-large is-info">
+              Create nextgame!
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  {% endif %}
+
+  {% include 'footer.html' %}
+</body>
+
+</html>
