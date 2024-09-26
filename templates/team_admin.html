@@ -30,20 +30,23 @@
         </div>
       </form>
     </div>
+  </section>
 
+  <section class="section">
     <div class="container is-max-desktop">
-      <table class="table">
+      <table class="table is-striped is-hoverable is-fullwidth">
         <tbody>
-          {% for (id, pn) in players %}
+          {% for id, pn in players|items %}
           <tr>
-            <th>
+            <th class="is-two-thirds">
               {{ pn }}
             </th>
             <td>
-              <button action="/admin/{{ key }}/{{ secret }}/player/{{ id }}" method="delete" type="submit"
-                class="button is-danger">
-                Delete
-              </button>
+              <form action="/admin/{{ key }}/{{ secret }}/player/{{ id }}/delete" method="post">
+                <button type="submit" class="button is-danger">
+                  Delete
+                </button>
+              </form>
             </td>
           </tr>
           {% endfor %}

@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+// use std::result::Result as StdRst;
+
 use minijinja::{context as mjctx, Environment as MiniJinjaEnv};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use worker::*;
+// use worker_kv::{KvError, KvStore};
 
 mod random;
 
@@ -12,12 +15,26 @@ struct Team {
   name: String,
   secret: String,
   next_game: Option<String>,
+  // NB: https://github.com/RReverser/serde-wasm-bindgen/issues/10
+  // so currently we need to manually serde_json it
   players: HashMap<PlayerID, String>,
 }
+
+// impl Team {
+//   async fn get(store: &KvStore, key: &str) -> StdRst<Self, KvError> {
+//     let s = store.get(key).text().await?.unwrap();
+//     serde_json::from_str(&s).unwrap()
+//   }
+
+//   async fn put(store: &KvStore, key: &str) -> StdRst<(), KvError> {
+//     store.put(name, value)
+//   }
+// }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Game {
   description: String,
+  // see above
   players: HashMap<PlayerID, bool>,
   guests: Vec<String>,
 }
@@ -27,7 +44,7 @@ struct AppCtx {
 }
 
 #[event(fetch)]
-async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
+async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
   console_error_panic_hook::set_once();
 
   let mut mje = MiniJinjaEnv::new();
@@ -40,7 +57,7 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     .post_async("/new_team", new_team)
     .get_async("/admin/:teamkey/:teamsecret", admin)
     .post_async("/admin/:teamkey/:teamsecret/player", add_player)
-    .delete_async("/admin/:teamkey/:teamsecret/player/:player", delete_player)
+    .post_async("/admin/:teamkey/:teamsecret/player/:playerid/delete", delete_player)
     .get_async("/team/:teamkey", team)
     .post_async("/team/:teamkey/new_game", new_game)
     .run(req, env)
@@ -85,7 +102,12 @@ async fn new_team(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
     players: HashMap::new(),
   };
 
-  return match ctx.kv("teams")?.put(&key, new_team)?.execute().await {
+  return match ctx
+    .kv("teams")?
+    .put(&key, serde_json::to_string(&new_team).unwrap())?
+    .execute()
+    .await
+  {
     Ok(_) => {
       let template = ctx.data.mje.get_template("new_team.html").unwrap();
 
@@ -110,12 +132,13 @@ async fn admin(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
   let key = ctx.param("teamkey").unwrap();
   let secret = ctx.param("teamsecret").unwrap();
 
-  let team = {
-    let t = ctx.kv("teams")?.get(key).json::<Team>().await?;
+  let team: Team = {
+    let t = ctx.kv("teams")?.get(key).text().await?;
     if t.is_none() {
       return auth_err;
     }
-    t.unwrap()
+    let t = t.unwrap();
+    serde_json::from_str(&t).unwrap()
   };
 
   if &team.secret != secret {
@@ -145,12 +168,13 @@ async fn add_player(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response>
 
   let teams_kv = ctx.kv("teams")?;
 
-  let mut team = {
-    let t = teams_kv.get(key).json::<Team>().await?;
+  let mut team: Team = {
+    let t = teams_kv.get(key).text().await?;
     if t.is_none() {
       return auth_err;
     }
-    t.unwrap()
+    let t = t.unwrap();
+    serde_json::from_str(&t).unwrap()
   };
 
   if &team.secret != secret {
@@ -167,7 +191,11 @@ async fn add_player(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response>
   let pid = random::hex_string();
   team.players.insert(pid, name);
 
-  return match teams_kv.put(key, team)?.execute().await {
+  return match teams_kv
+    .put(key, serde_json::to_string(&team).unwrap())?
+    .execute()
+    .await
+  {
     Ok(_) => {
       let mut admin_link = req.url()?.clone();
       admin_link.set_path(&format!("/admin/{}/{}", key, secret));
@@ -178,25 +206,43 @@ async fn add_player(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response>
   };
 }
 
-async fn delete_player(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+async fn delete_player(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
   let auth_err = Response::error("team not found", 404);
 
   let key = ctx.param("teamkey").unwrap();
   let secret = ctx.param("teamsecret").unwrap();
+  let pid = ctx.param("playerid").unwrap();
 
-  let team = {
-    let t = ctx.kv("teams")?.get(key).json::<Team>().await?;
+  let teams_kv = ctx.kv("teams")?;
+
+  let mut team: Team = {
+    let t = teams_kv.get(key).text().await?;
     if t.is_none() {
       return auth_err;
     }
-    t.unwrap()
+    let t = t.unwrap();
+    serde_json::from_str(&t).unwrap()
   };
 
   if &team.secret != secret {
     return auth_err;
   }
 
-  Response::empty()
+  team.players.remove(pid);
+
+  return match teams_kv
+    .put(key, serde_json::to_string(&team).unwrap())?
+    .execute()
+    .await
+  {
+    Ok(_) => {
+      let mut admin_link = req.url()?.clone();
+      admin_link.set_path(&format!("/admin/{}/{}", key, secret));
+
+      Response::redirect(admin_link)
+    }
+    Err(_) => Response::error("failed to remove player from team", 500),
+  };
 }
 
 async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {

@@ -13,6 +13,4 @@ id = "2db8a216518d4e178d3d253957dd1459"
 
 [build]
 command = "cargo install -q worker-build && worker-build --release"
-
-[env.dev]
-build = { command = "cargo install -q worker-build && worker-build --dev" }
+watch_dir = ["src", "templates"]

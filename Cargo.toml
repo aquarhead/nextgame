@@ -11,9 +11,11 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-worker = { version = "0.4.0" }
+worker = "0.4"
+worker-kv = "*"
 console_error_panic_hook = "0.1"
 serde = { version = "1", features = ["derive"] }
+serde_json = "*"
 minijinja = "2"
 minijinja-embed = "2"
 getrandom = { version = "*", features = ["js"] }
