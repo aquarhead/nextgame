@@ -34,10 +34,16 @@
 
     <div class="container is-max-desktop">
       <table class="table is-bordered is-striped is-hoverable is-fullwidth">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Click to toggle</th>
+          </tr>
+        </thead>
         <tbody>
           {% for (name, pid, playing) in players %}
           <tr>
-            <th class="is-two-thirds">
+            <th class="is-two-thirds" scope="row">
               {{ name }}
             </th>
             <td>
