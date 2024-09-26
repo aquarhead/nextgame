@@ -30,6 +30,8 @@ jobs:
         key: ${{ runner.os }}-${{ hashFiles('Cargo.lock') }}-${{ hashFiles('package-lock.json') }}
         restore-keys: ${{ runner.os }}-
     - uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: "wasm32-unknown-unknown"
     - name: Deploy to workers
       env:
         CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
