@@ -283,6 +283,7 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       serde_json::from_str(&g).unwrap()
     };
 
+    // Add missing players
     let tp_set: HashSet<_> = team.players.keys().cloned().collect();
     let gp_set: HashSet<_> = ng.players.keys().cloned().collect();
     let new_players = tp_set
