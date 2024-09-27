@@ -59,6 +59,7 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
     .get_async("/admin/:teamkey/:teamsecret", admin)
     .post_async("/admin/:teamkey/:teamsecret/player", add_player)
     .post_async("/admin/:teamkey/:teamsecret/player/:playerid/delete", delete_player)
+    .post_async("/admin/:teamkey/:teamsecret/reset_game", reset_game)
     .get_async("/team/:teamkey", team)
     .post_async("/team/:teamkey/new_game", new_game)
     .post_async("/team/:teamkey/player/:playerid/play", play)
@@ -152,10 +153,8 @@ async fn admin(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
 
   template
     .render(mjctx! {
-      team_name => team.name,
       key,
-      secret,
-      players => team.players,
+      team,
     })
     .map_or(
       Response::error("failed to render team_admin page", 500),
@@ -245,6 +244,44 @@ async fn delete_player(req: Request, ctx: RouteContext<AppCtx>) -> Result<Respon
       Response::redirect(admin_link)
     }
     Err(_) => Response::error("failed to remove player from team", 500),
+  };
+}
+
+async fn reset_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+  let auth_err = Response::error("team not found", 404);
+
+  let key = ctx.param("teamkey").unwrap();
+  let secret = ctx.param("teamsecret").unwrap();
+
+  let teams_kv = ctx.kv("teams")?;
+
+  let mut team: Team = {
+    let t = teams_kv.get(key).text().await?;
+    if t.is_none() {
+      return auth_err;
+    }
+    let t = t.unwrap();
+    serde_json::from_str(&t).unwrap()
+  };
+
+  if &team.secret != secret {
+    return auth_err;
+  }
+
+  team.next_game = None;
+
+  return match teams_kv
+    .put(key, serde_json::to_string(&team).unwrap())?
+    .execute()
+    .await
+  {
+    Ok(_) => {
+      let mut admin_link = req.url()?.clone();
+      admin_link.set_path(&format!("/admin/{}/{}", key, secret));
+
+      Response::redirect(admin_link)
+    }
+    Err(_) => Response::error("failed to reset game", 500),
   };
 }
 

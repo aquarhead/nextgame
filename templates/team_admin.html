@@ -7,7 +7,7 @@
   <section class="hero is-info">
     <div class="hero-body">
       <h1 class="title">
-        nextgame :: {{ team_name }}
+        nextgame :: {{ team.name }}
       </h1>
       <p class="subtitle">
         Manage players, and more (to come)..
@@ -16,8 +16,22 @@
   </section>
 
   <section class="section">
+    {% if team.next_game %}
     <div class="container is-max-desktop">
-      <form action="/admin/{{ key }}/{{ secret }}/player" method="post">
+      <form action="/admin/{{ key }}/{{ team.secret }}/reset_game" method="post">
+        <div class="field">
+          <div class="control">
+            <button type="submit" class="button is-medium is-warning">
+              Force reset game
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="container is-max-desktop">
+      <form action="/admin/{{ key }}/{{ team.secret }}/player" method="post">
         <div class="field has-addons">
           <div class="control is-expanded">
             <input type="text" name="player_name" class="input is-medium" placeholder="Player name">
@@ -36,13 +50,13 @@
     <div class="container is-max-desktop">
       <table class="table is-striped is-hoverable is-fullwidth">
         <tbody>
-          {% for id, pn in players|items %}
+          {% for id, pn in team.players|items %}
           <tr>
             <th class="is-two-thirds">
               {{ pn }}
             </th>
             <td>
-              <form action="/admin/{{ key }}/{{ secret }}/player/{{ id }}/delete" method="post">
+              <form action="/admin/{{ key }}/{{ team.secret }}/player/{{ id }}/delete" method="post">
                 <button type="submit" class="button is-danger">
                   Delete
                 </button>
