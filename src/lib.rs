@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 // use std::result::Result as StdRst;
 
+use chrono::Utc;
+use chrono_tz::Tz;
 use minijinja::{context as mjctx, Environment as MiniJinjaEnv};
 use serde::{Deserialize, Serialize};
 use worker::*;
@@ -15,6 +17,9 @@ struct Team {
   name: String,
   secret: String,
   next_game: Option<String>,
+  auto_expire_cron: Option<String>,
+  #[serde(default)]
+  timezone: Tz,
   // NB: https://github.com/RReverser/serde-wasm-bindgen/issues/10
   // so currently we need to manually serde_json it
   players: HashMap<PlayerID, String>,
@@ -35,7 +40,7 @@ struct Team {
 struct Game {
   description: String,
   // see Team struct comment
-  players: HashMap<PlayerID, bool>, // TODO: maybe???
+  players: HashMap<PlayerID, bool>,
   guests: Vec<String>,
   // TODO: comments??
 }
@@ -60,6 +65,7 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
     .post_async("/admin/:teamkey/:teamsecret/player", add_player)
     .post_async("/admin/:teamkey/:teamsecret/player/:playerid/delete", delete_player)
     .post_async("/admin/:teamkey/:teamsecret/reset_game", reset_game)
+    .post_async("/admin/:teamkey/:teamsecret/cron", set_cron)
     .get_async("/team/:teamkey", team)
     .post_async("/team/:teamkey/new_game", new_game)
     .post_async("/team/:teamkey/player/:playerid/play", play)
@@ -103,6 +109,8 @@ async fn new_team(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
     name,
     secret,
     next_game: None,
+    auto_expire_cron: None,
+    timezone: Tz::default(),
     players: HashMap::new(),
   };
 
@@ -254,6 +262,7 @@ async fn reset_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response>
   let secret = ctx.param("teamsecret").unwrap();
 
   let teams_kv = ctx.kv("teams")?;
+  let games_kv = ctx.kv("games")?;
 
   let mut team: Team = {
     let t = teams_kv.get(key).text().await?;
@@ -268,7 +277,10 @@ async fn reset_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response>
     return auth_err;
   }
 
-  team.next_game = None;
+  if let Some(ng_key) = team.next_game.take() {
+    // try our best to clean up
+    let _ = games_kv.delete(&ng_key).await;
+  }
 
   return match teams_kv
     .put(key, serde_json::to_string(&team).unwrap())?
@@ -282,6 +294,58 @@ async fn reset_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response>
       Response::redirect(admin_link)
     }
     Err(_) => Response::error("failed to reset game", 500),
+  };
+}
+
+async fn set_cron(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+  let auth_err = Response::error("team not found", 404);
+
+  let key = ctx.param("teamkey").unwrap();
+  let secret = ctx.param("teamsecret").unwrap();
+
+  let teams_kv = ctx.kv("teams")?;
+
+  let mut team: Team = {
+    let t = teams_kv.get(key).text().await?;
+    if t.is_none() {
+      return auth_err;
+    }
+    let t = t.unwrap();
+    serde_json::from_str(&t).unwrap()
+  };
+
+  if &team.secret != secret {
+    return auth_err;
+  }
+
+  let mut r = req.clone_mut()?;
+  let f = r.form_data().await?;
+  let tz = f.get_field("tz").map(|t| t.parse::<Tz>().ok()).flatten();
+  if tz.is_none() {
+    return Response::error("invalid time zone", 400);
+  }
+  let tz = tz.unwrap();
+
+  let cron = f.get_field("cron").unwrap_or_default();
+  if cron_parser::parse(&cron, &Utc::now().with_timezone(&tz)).is_err() {
+    return Response::error("invalid cron expression", 400);
+  }
+
+  team.auto_expire_cron = Some(cron);
+  team.timezone = tz;
+
+  return match teams_kv
+    .put(key, serde_json::to_string(&team).unwrap())?
+    .execute()
+    .await
+  {
+    Ok(_) => {
+      let mut admin_link = req.url()?.clone();
+      admin_link.set_path(&format!("/admin/{}/{}", key, secret));
+
+      Response::redirect(admin_link)
+    }
+    Err(_) => Response::error("failed to set cron and tz", 500),
   };
 }
 
@@ -418,14 +482,15 @@ async fn new_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
 
   let ng_key = random::hex_string();
 
-  if games_kv
-    .put(&ng_key, serde_json::to_string(&ng).unwrap())?
-    // MAYBE: this may need adjustment
-    .expiration_ttl(30 * 86400)
-    .execute()
-    .await
-    .is_err()
-  {
+  let mut pob = games_kv.put(&ng_key, serde_json::to_string(&ng).unwrap())?;
+
+  if let Some(cron) = team.auto_expire_cron.clone() {
+    if let Ok(exp) = cron_parser::parse(&cron, &Utc::now().with_timezone(&team.timezone)) {
+      pob = pob.expiration(exp.timestamp() as u64);
+    }
+  }
+
+  if pob.execute().await.is_err() {
     return Response::error("failed to create next game", 500);
   }
 
