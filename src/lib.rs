@@ -198,8 +198,10 @@ async fn add_player(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response>
     return Response::error("player name can't be empty", 400);
   }
 
-  let pid = random::hex_string();
-  team.players.insert(pid, name);
+  name.trim().split(',').for_each(|n| {
+    let pid = random::hex_string();
+    team.players.insert(pid, n.to_string());
+  });
 
   return match teams_kv
     .put(key, serde_json::to_string(&team).unwrap())?
