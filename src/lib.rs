@@ -329,12 +329,16 @@ async fn set_cron(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
   let tz = tz.unwrap();
 
   let cron = f.get_field("cron").unwrap_or_default();
-  if cron_parser::parse(&cron, &Utc::now().with_timezone(&tz)).is_err() {
-    return Response::error("invalid cron expression", 400);
-  }
+  if cron.len() == 0 {
+    team.auto_expire_cron = None;
+  } else {
+    if cron_parser::parse(&cron, &Utc::now().with_timezone(&tz)).is_err() {
+      return Response::error("invalid cron expression", 400);
+    }
 
-  team.auto_expire_cron = Some(cron);
-  team.timezone = tz;
+    team.auto_expire_cron = Some(cron);
+    team.timezone = tz;
+  }
 
   return match teams_kv
     .put(key, serde_json::to_string(&team).unwrap())?
