@@ -19,24 +19,54 @@
 
   <section class="section">
     <div class="container is-max-desktop">
-      <div class="content is-large">
-        <blockquote class="py-1">
-          {{ description|safe }}
-        </blockquote>
-      </div>
-
-      <div class="content">
-        <h2 class="title">
-          {{ playing_count }} players playing!
-        </h2>
+      <div class="columns">
+        <div class="column">
+          <div class="box">
+            <h3 class="title">{{ playing_count }} playing!</h3>
+            {% if ng.guests %}
+            <p class="subtitle">including {{ ng.guests|length }} guests</p>
+            {% endif %}
+            <div class="content has-background-light px-3 py-3">
+              <!-- <blockquote class="py-3"> -->
+              {{ description|safe }}
+              <!-- </blockquote> -->
+            </div>
+          </div>
+        </div>
+        <div class="column">
+          <div class="content">
+            <h3 class="title">Comments</h3>
+            {% for comment in ng.comments %}
+            <div class="box">{{ comment }}</div>
+            {% endfor %}
+            <form action="/team/{{ key }}/comment" method="post">
+              <div class="field">
+                <div class="control">
+                  <textarea name="comment" class="textarea" rows="2"></textarea>
+                </div>
+              </div>
+              <div class="field">
+                <div class="control">
+                  <button type="submit" class="button is-info">
+                    Add comment
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="container is-max-desktop">
+    <div class="container is-max-desktop mt-2">
       <table class="table is-bordered is-striped is-hoverable is-fullwidth">
+        <colgroup>
+          <col span="1" style="width: 60%;">
+          <col span="1" style="width: 40%;">
+        </colgroup>
         <thead>
           <tr>
-            <th></th>
+            <th>Player</th>
             <th>Click to toggle</th>
           </tr>
         </thead>
@@ -66,6 +96,58 @@
         </tbody>
       </table>
     </div>
+
+    <div class="container is-max-desktop mt-4">
+      <div class="columns">
+        <div class="column is-half">
+          <form action="/team/{{ key }}/guest" method="post">
+            <div class="field has-addons">
+              <div class="control is-expanded">
+                <input type="text" name="guest_name" class="input" placeholder="Guest name">
+              </div>
+              <div class="control">
+                <button type="submit" class="button is-primary">
+                  Add guest
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    {% if ng.guests %}
+    <div class="container is-max-desktop mt-2">
+      <table class="table is-bordered is-striped is-hoverable is-fullwidth">
+        <colgroup>
+          <col span="1" style="width: 60%;">
+          <col span="1" style="width: 40%;">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Guest</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for name in ng.guests %}
+          <tr>
+            <th class="is-two-thirds" scope="row">
+              {{ name }}
+            </th>
+            <td>
+              <form action="/team/{{ key }}/guest/{{ name }}/delete" method="post">
+                <button type="submit" class="button is-warning">
+                  Delete
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
   </section>
 
   {% else %}

@@ -42,7 +42,8 @@ struct Game {
   // see Team struct comment
   players: HashMap<PlayerID, bool>,
   guests: Vec<String>,
-  // TODO: comments??
+  #[serde(default)]
+  comments: Vec<String>,
 }
 
 struct AppCtx {
@@ -70,6 +71,9 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
     .post_async("/team/:teamkey/new_game", new_game)
     .post_async("/team/:teamkey/player/:playerid/play", play)
     .post_async("/team/:teamkey/player/:playerid/not_play", not_play)
+    .post_async("/team/:teamkey/comment", add_comment)
+    .post_async("/team/:teamkey/guest", add_guest)
+    .post_async("/team/:teamkey/guest/:guest/delete", delete_guest)
     .run(req, env)
     .await
 }
@@ -433,7 +437,6 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       options.insert(Options::ENABLE_GFM);
       let parser = Parser::new_ext(&ng.description, options);
 
-      // Write to String buffer.
       let mut html_output = String::new();
       pulldown_cmark::html::push_html(&mut html_output, parser);
       html_output
@@ -443,6 +446,7 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       .render(mjctx! {
         team_name => team.name,
         key,
+        ng_key,
         ng,
         description,
         playing_count,
@@ -484,6 +488,7 @@ async fn new_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
     description,
     players: team.players.iter().map(|(k, _)| (k.to_string(), false)).collect(),
     guests: Vec::new(),
+    comments: Vec::new(),
   };
 
   let ng_key = random::hex_string();
@@ -607,6 +612,158 @@ async fn not_play(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
         Response::redirect(team_link)
       }
       Err(_) => Response::error("failed to set not_play", 500),
+    }
+  } else {
+    Response::error("game not found", 404)
+  }
+}
+
+async fn add_comment(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+  let key = ctx.param("teamkey").unwrap();
+
+  let teams_kv = ctx.kv("teams")?;
+  let games_kv = ctx.kv("games")?;
+
+  let team: Team = {
+    let t = teams_kv.get(key).text().await?;
+    if t.is_none() {
+      return Response::error("team not found", 404);
+    }
+    let t = t.unwrap();
+    serde_json::from_str(&t).unwrap()
+  };
+
+  if let Some(ng_key) = team.next_game {
+    let mut ng: Game = {
+      let g = games_kv.get(&ng_key).text().await?;
+      if g.is_none() {
+        return Response::error("game does not exist anymore", 404);
+      }
+      let g = g.unwrap();
+      serde_json::from_str(&g).unwrap()
+    };
+
+    let mut r = req.clone_mut()?;
+    let f = r.form_data().await?;
+    let comment = f.get_field("comment").unwrap_or_default();
+    if comment.len() == 0 {
+      return Response::error("comment can't be empty", 400);
+    }
+
+    ng.comments.push(comment);
+
+    match games_kv
+      .put(&ng_key, serde_json::to_string(&ng).unwrap())?
+      .execute()
+      .await
+    {
+      Ok(_) => {
+        let mut team_link = req.url()?.clone();
+        team_link.set_path(&format!("/team/{}", key));
+
+        Response::redirect(team_link)
+      }
+      Err(_) => Response::error("failed to set play", 500),
+    }
+  } else {
+    Response::error("game not found", 404)
+  }
+}
+
+async fn add_guest(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+  let key = ctx.param("teamkey").unwrap();
+
+  let teams_kv = ctx.kv("teams")?;
+  let games_kv = ctx.kv("games")?;
+
+  let team: Team = {
+    let t = teams_kv.get(key).text().await?;
+    if t.is_none() {
+      return Response::error("team not found", 404);
+    }
+    let t = t.unwrap();
+    serde_json::from_str(&t).unwrap()
+  };
+
+  if let Some(ng_key) = team.next_game {
+    let mut ng: Game = {
+      let g = games_kv.get(&ng_key).text().await?;
+      if g.is_none() {
+        return Response::error("game does not exist anymore", 404);
+      }
+      let g = g.unwrap();
+      serde_json::from_str(&g).unwrap()
+    };
+
+    let mut r = req.clone_mut()?;
+    let f = r.form_data().await?;
+    let guests = f.get_field("guest_name").unwrap_or_default();
+    if guests.len() == 0 {
+      return Response::error("guest_name can't be empty", 400);
+    }
+
+    guests.trim().split(',').for_each(|g| ng.guests.push(g.to_string()));
+
+    match games_kv
+      .put(&ng_key, serde_json::to_string(&ng).unwrap())?
+      .execute()
+      .await
+    {
+      Ok(_) => {
+        let mut team_link = req.url()?.clone();
+        team_link.set_path(&format!("/team/{}", key));
+
+        Response::redirect(team_link)
+      }
+      Err(_) => Response::error("failed to set play", 500),
+    }
+  } else {
+    Response::error("game not found", 404)
+  }
+}
+
+async fn delete_guest(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+  let key = ctx.param("teamkey").unwrap();
+
+  let teams_kv = ctx.kv("teams")?;
+  let games_kv = ctx.kv("games")?;
+
+  let team: Team = {
+    let t = teams_kv.get(key).text().await?;
+    if t.is_none() {
+      return Response::error("team not found", 404);
+    }
+    let t = t.unwrap();
+    serde_json::from_str(&t).unwrap()
+  };
+
+  if let Some(ng_key) = team.next_game {
+    let mut ng: Game = {
+      let g = games_kv.get(&ng_key).text().await?;
+      if g.is_none() {
+        return Response::error("game does not exist anymore", 404);
+      }
+      let g = g.unwrap();
+      serde_json::from_str(&g).unwrap()
+    };
+
+    let g = urlencoding::decode(ctx.param("guest").unwrap()).unwrap().to_string();
+
+    // TODO: only delete 1 guest
+    ng.guests = ng.guests.into_iter().filter(|gg| *gg != g).collect();
+
+    match games_kv
+      .put(&ng_key, serde_json::to_string(&ng).unwrap())?
+      .execute()
+      .await
+    {
+      Ok(_) => {
+        let mut team_link = req.url()?.clone();
+        team_link.set_path(&format!("/team/{}", key));
+
+        Response::redirect(team_link)
+      }
+      Err(_) => Response::error("failed to set play", 500),
     }
   } else {
     Response::error("game not found", 404)
