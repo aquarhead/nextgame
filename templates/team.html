@@ -77,19 +77,16 @@
               {{ name }}
             </th>
             <td>
-              {% if playing %}
-              <form action="/team/{{ key }}/player/{{ pid }}/not_play" method="post">
-                <button type="submit" class="button is-info">
-                  Playing
-                </button>
-              </form>
-              {% else %}
-              <form action="/team/{{ key }}/player/{{ pid }}/play" method="post">
-                <button type="submit" class="button is-danger">
-                  Not playing
-                </button>
-              </form>
-              {% endif %}
+              <form id="play-{{ pid }}" action="/team/{{ key }}/player/{{ pid }}/play" method="post"></form>
+              <form id="not-play-{{ pid }}" action="/team/{{ key }}/player/{{ pid }}/not_play" method="post"></form>
+              <button form="play-{{ pid }}" type="submit" class="button {% if playing is true %}is-info{% endif %}">
+                Playing
+              </button>
+
+              <button form="not-play-{{ pid }}" type="submit"
+                class="button {% if playing is false %}is-danger{% endif %}">
+                Not playing
+              </button>
             </td>
           </tr>
           {% endfor %}

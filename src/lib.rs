@@ -40,7 +40,7 @@ struct Team {
 struct Game {
   description: String,
   // see Team struct comment
-  players: HashMap<PlayerID, bool>,
+  players: HashMap<PlayerID, Option<bool>>,
   guests: Vec<String>,
   #[serde(default)]
   comments: Vec<String>,
@@ -394,12 +394,12 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       serde_json::from_str(&g).unwrap()
     };
 
-    // Add missing players
+    // Populate unregistered players
     let tp_set: HashSet<_> = team.players.keys().cloned().collect();
     let gp_set: HashSet<_> = ng.players.keys().cloned().collect();
     let new_players = tp_set
       .difference(&gp_set)
-      .map(|pid| (pid.to_string(), false))
+      .map(|pid| (pid.to_string(), None))
       .collect::<HashMap<_, _>>();
     if new_players.len() > 0 {
       ng.players.extend(new_players.into_iter());
@@ -428,7 +428,7 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       .collect::<Vec<_>>();
     players.sort();
 
-    let playing_count = ng.players.values().filter(|p| **p).count() + ng.guests.len();
+    let playing_count = ng.players.values().filter(|p| p.unwrap_or(false)).count() + ng.guests.len();
 
     let description = {
       use pulldown_cmark::{Options, Parser};
@@ -441,6 +441,8 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       pulldown_cmark::html::push_html(&mut html_output, parser);
       html_output
     };
+
+    console_debug!("{:?}", &ng);
 
     template
       .render(mjctx! {
@@ -486,7 +488,7 @@ async fn new_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
 
   let ng = Game {
     description,
-    players: team.players.iter().map(|(k, _)| (k.to_string(), false)).collect(),
+    players: HashMap::new(),
     guests: Vec::new(),
     comments: Vec::new(),
   };
@@ -500,6 +502,8 @@ async fn new_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       pob = pob.expiration(exp.timestamp() as u64);
     }
   }
+
+  console_debug!("{:?}", &pob);
 
   if pob.execute().await.is_err() {
     return Response::error("failed to create next game", 500);
@@ -548,9 +552,7 @@ async fn play(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       serde_json::from_str(&g).unwrap()
     };
 
-    if let Some(p) = ng.players.get_mut(pid) {
-      *p = true;
-    }
+    ng.players.insert(pid.clone(), Some(true));
 
     match games_kv
       .put(&ng_key, serde_json::to_string(&ng).unwrap())?
@@ -596,9 +598,7 @@ async fn not_play(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       serde_json::from_str(&g).unwrap()
     };
 
-    if let Some(p) = ng.players.get_mut(pid) {
-      *p = false;
-    }
+    ng.players.insert(pid.clone(), Some(false));
 
     match games_kv
       .put(&ng_key, serde_json::to_string(&ng).unwrap())?
