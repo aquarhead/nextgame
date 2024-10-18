@@ -442,8 +442,6 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       html_output
     };
 
-    console_debug!("{:?}", &ng);
-
     template
       .render(mjctx! {
         team_name => team.name,
