@@ -66,8 +66,8 @@
         </colgroup>
         <thead>
           <tr>
-            <th>Player</th>
-            <th>Click to toggle</th>
+            <th>Name</th>
+            <th>Playing?</th>
           </tr>
         </thead>
         <tbody>
@@ -80,12 +80,12 @@
               <form id="play-{{ pid }}" action="/team/{{ key }}/player/{{ pid }}/play" method="post"></form>
               <form id="not-play-{{ pid }}" action="/team/{{ key }}/player/{{ pid }}/not_play" method="post"></form>
               <button form="play-{{ pid }}" type="submit" class="button {% if playing is true %}is-info{% endif %}">
-                Playing
+                Yes
               </button>
 
               <button form="not-play-{{ pid }}" type="submit"
                 class="button {% if playing is false %}is-danger{% endif %}">
-                Not playing
+                No
               </button>
             </td>
           </tr>
