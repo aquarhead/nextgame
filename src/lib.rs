@@ -1,8 +1,6 @@
 use std::collections::{HashMap, HashSet};
 // use std::result::Result as StdRst;
 
-use chrono::Utc;
-use chrono_tz::Tz;
 use minijinja::{context as mjctx, Environment as MiniJinjaEnv};
 use serde::{Deserialize, Serialize};
 use worker::*;
@@ -17,9 +15,6 @@ struct Team {
   name: String,
   secret: String,
   next_game: Option<String>,
-  auto_expire_cron: Option<String>,
-  #[serde(default)]
-  timezone: Tz,
   // NB: https://github.com/RReverser/serde-wasm-bindgen/issues/10
   // so currently we need to manually serde_json it
   players: HashMap<PlayerID, String>,
@@ -66,7 +61,6 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
     .post_async("/admin/:teamkey/:teamsecret/player", add_player)
     .post_async("/admin/:teamkey/:teamsecret/player/:playerid/delete", delete_player)
     .post_async("/admin/:teamkey/:teamsecret/reset_game", reset_game)
-    .post_async("/admin/:teamkey/:teamsecret/cron", set_cron)
     .get_async("/team/:teamkey", team)
     .post_async("/team/:teamkey/new_game", new_game)
     .post_async("/team/:teamkey/player/:playerid/play", play)
@@ -113,8 +107,6 @@ async fn new_team(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
     name,
     secret,
     next_game: None,
-    auto_expire_cron: None,
-    timezone: Tz::default(),
     players: HashMap::new(),
   };
 
@@ -303,62 +295,6 @@ async fn reset_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response>
   };
 }
 
-async fn set_cron(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
-  let auth_err = Response::error("team not found", 404);
-
-  let key = ctx.param("teamkey").unwrap();
-  let secret = ctx.param("teamsecret").unwrap();
-
-  let teams_kv = ctx.kv("teams")?;
-
-  let mut team: Team = {
-    let t = teams_kv.get(key).text().await?;
-    if t.is_none() {
-      return auth_err;
-    }
-    let t = t.unwrap();
-    serde_json::from_str(&t).unwrap()
-  };
-
-  if &team.secret != secret {
-    return auth_err;
-  }
-
-  let mut r = req.clone_mut()?;
-  let f = r.form_data().await?;
-  let tz = f.get_field("tz").map(|t| t.parse::<Tz>().ok()).flatten();
-  if tz.is_none() {
-    return Response::error("invalid time zone", 400);
-  }
-  let tz = tz.unwrap();
-
-  let cron = f.get_field("cron").unwrap_or_default();
-  if cron.len() == 0 {
-    team.auto_expire_cron = None;
-  } else {
-    if cron_parser::parse(&cron, &Utc::now().with_timezone(&tz)).is_err() {
-      return Response::error("invalid cron expression", 400);
-    }
-
-    team.auto_expire_cron = Some(cron);
-    team.timezone = tz;
-  }
-
-  return match teams_kv
-    .put(key, serde_json::to_string(&team).unwrap())?
-    .execute()
-    .await
-  {
-    Ok(_) => {
-      let mut admin_link = req.url()?.clone();
-      admin_link.set_path(&format!("/admin/{}/{}", key, secret));
-
-      Response::redirect(admin_link)
-    }
-    Err(_) => Response::error("failed to set cron and tz", 500),
-  };
-}
-
 async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
   let not_found = Response::error("team not found", 404);
 
@@ -376,14 +312,18 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
     serde_json::from_str(&t).unwrap()
   };
 
-  let template = ctx.data.mje.get_template("team.html").unwrap();
-
   if let Some(ng_key) = team.next_game {
+    let template = ctx.data.mje.get_template("team.html").unwrap();
+
     let mut ng: Game = {
       let g = games_kv.get(&ng_key).text().await?;
       if g.is_none() {
         // MAYBE: unset the next_game field on the Team?
-        return template
+        return ctx
+          .data
+          .mje
+          .get_template("team_no_game.html")
+          .unwrap()
           .render(mjctx! {
             team_name => team.name,
             key,
@@ -454,7 +394,11 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       })
       .map_or(Response::error("failed to render team page", 500), Response::from_html)
   } else {
-    template
+    ctx
+      .data
+      .mje
+      .get_template("team_no_game.html")
+      .unwrap()
       .render(mjctx! {
         team_name => team.name,
         key,
@@ -493,17 +437,12 @@ async fn new_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
 
   let ng_key = random::hex_string();
 
-  let mut pob = games_kv.put(&ng_key, serde_json::to_string(&ng).unwrap())?;
-
-  if let Some(cron) = team.auto_expire_cron.clone() {
-    if let Ok(exp) = cron_parser::parse(&cron, &Utc::now().with_timezone(&team.timezone)) {
-      pob = pob.expiration(exp.timestamp() as u64);
-    }
-  }
-
-  console_debug!("{:?}", &pob);
-
-  if pob.execute().await.is_err() {
+  if games_kv
+    .put(&ng_key, serde_json::to_string(&ng).unwrap())?
+    .execute()
+    .await
+    .is_err()
+  {
     return Response::error("failed to create next game", 500);
   }
 

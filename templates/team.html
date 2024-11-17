@@ -15,8 +15,6 @@
     </div>
   </section>
 
-  {% if ng %}
-
   <section class="section">
     <div class="container is-max-desktop">
       <div class="columns">
@@ -146,33 +144,6 @@
     </div>
     {% endif %}
   </section>
-
-  {% else %}
-
-  <section class="section">
-    <div class="container is-max-desktop">
-      <form action="/team/{{ key }}/new_game" method="post">
-        <div class="field">
-          <div class="control">
-            <textarea name="description" class="textarea is-medium"
-              placeholder="Describe the time, location, etc.. of the nextgame"></textarea>
-          </div>
-          <p class="help">Supports <a target="_blank"
-              href="https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax">GFM
-              syntax</a>.</p>
-        </div>
-        <div class="field is-grouped is-grouped-centered">
-          <div class="control">
-            <button type="submit" class="button is-large is-info">
-              Create nextgame!
-            </button>
-          </div>
-        </div>
-      </form>
-    </div>
-  </section>
-
-  {% endif %}
 
   {% include 'footer.html' %}
 </body>

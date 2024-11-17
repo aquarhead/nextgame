@@ -22,44 +22,13 @@
         <div class="field">
           <div class="control">
             <button type="submit" class="button is-medium is-warning">
-              Force reset game
+              Reset game
             </button>
           </div>
         </div>
       </form>
     </div>
     {% endif %}
-
-    <div class="container is-max-desktop">
-      <form action="/admin/{{ key }}/{{ team.secret }}/cron" method="post">
-        <div class="field">
-          <label class="label">Game auto-expire cron</label>
-          <div class="control">
-            <input class="input" type="text" name="cron"
-              value="{% if team.auto_expire_cron %}{{ team.auto_expire_cron }}{% endif %}">
-          </div>
-          <p class="help">Time to <b>EXPIRE</b> the game - set to a time after the game finishes. Use <a target="_blank"
-              href="https://crontab.guru/">this</a>
-            to help with the cron expression. (Note this does not affect existing games, you may need to manually reset
-            it)</p>
-        </div>
-
-        <div class="field">
-          <label class="label">Timezone</label>
-          <div class="control">
-            <input class="input" type="text" name="tz" value="{{ team.timezone }}">
-          </div>
-          <p class="help">Use "TZ Identifier" listed <a target="_blank"
-              href="https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List">here</a>.</p>
-        </div>
-
-        <div class="field">
-          <div class="control">
-            <button type="submit" class="button is-link is-medium">Save</button>
-          </div>
-        </div>
-      </form>
-    </div>
   </section>
 
   <section class="section pt-0">
