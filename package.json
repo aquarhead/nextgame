@@ -1,6 +1,6 @@
 {
   "devDependencies": {
-    "wrangler": "^3.111.0",
+    "wrangler": "^4.6.0",
     "wasm-opt": "^1.4.0"
   }
 }
