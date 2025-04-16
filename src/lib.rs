@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 
 use minijinja::{Environment as MiniJinjaEnv, context as mjctx};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use worker::*;
 // use worker_kv::{KvError, KvStore};
 
@@ -457,17 +458,34 @@ async fn new_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       let mut team_link = req.url()?.clone();
       team_link.set_path(&format!("/team/{}", key));
 
-      let link_str = team_link.to_string();
-      let key2 = key.clone();
-      let tn = team.name.clone();
+      let mut map = HashMap::new();
+      map.insert("topic", format!("nextgame-{}", key));
+      map.insert("message", format!("Sign up for nextgame [{}]", team.name));
+      map.insert("tags", "soccer".to_string());
+      map.insert("click", team_link.to_string());
+
+      let body = json!({
+        "topic": format!("nextgame-{}", key),
+        "message": format!("Sign up for {}", team.name),
+        "tags": ["soccer"],
+        "click": team_link.to_string(),
+        "actions": [
+          {
+            "action": "view",
+            "label": "Sign up",
+            "url": team_link.to_string(),
+            "clear": true
+          }
+        ]
+      });
+
+      console_log!("{}", body.to_string());
+
       wasm_bindgen_futures::spawn_local(async move {
         let client = reqwest::Client::new();
         let _ = client
-          .post(format!("https://ntfy.sh/nextgame-{}", key2))
-          .header("Click", &link_str)
-          .header("Tags", "soccer")
-          .header("Actions", format!("view, Sign up, {}, clear=true", &link_str))
-          .body(format!("Sign up for nextgame [{}]", tn))
+          .post("https://ntfy.sh/")
+          .body(body.to_string())
           .send()
           .await
           .unwrap();
