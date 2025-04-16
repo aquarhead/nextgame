@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 // use std::result::Result as StdRst;
 
-use minijinja::{context as mjctx, Environment as MiniJinjaEnv};
+use minijinja::{Environment as MiniJinjaEnv, context as mjctx};
 use serde::{Deserialize, Serialize};
 use worker::*;
 // use worker_kv::{KvError, KvStore};
@@ -456,6 +456,21 @@ async fn new_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
     Ok(_) => {
       let mut team_link = req.url()?.clone();
       team_link.set_path(&format!("/team/{}", key));
+
+      let link_str = team_link.to_string();
+      let key2 = key.clone();
+      wasm_bindgen_futures::spawn_local(async move {
+        let client = reqwest::Client::new();
+        let _ = client
+          .post(format!("https://ntfy.sh/nextgame-{}", key2))
+          .body(format!("Sign up for nextgame [{}]", team.name))
+          .header("Click", &link_str)
+          .header("Tags", "soccer")
+          .header("Actions", format!("view, Sign up, {}, clear=true", &link_str))
+          .send()
+          .await
+          .unwrap();
+      });
 
       Response::redirect(team_link)
     }

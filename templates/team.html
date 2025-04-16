@@ -4,6 +4,9 @@
 {% include 'head.html' %}
 
 <body>
+  <script>
+    new ClipboardJS('#copy-ntfy');
+  </script>
   <section class="hero is-info">
     <div class="hero-body">
       <h1 class="title">
@@ -19,7 +22,11 @@
     <div class="container is-max-desktop">
       <div class="columns">
         <div class="column">
-          <div class="box">
+          <button id="copy-ntfy" type="submit" class="button is-primary" data-clipboard-text="nextgame-{{ key }}">
+            Copy topic name for ntfy.sh
+          </button>
+
+          <div class="box mt-2">
             <h3 class="title">{{ playing_count }} playing!</h3>
             {% if ng.guests %}
             <p class="subtitle">including {{ ng.guests|length }} guests</p>
