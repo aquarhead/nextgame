@@ -459,14 +459,15 @@ async fn new_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
 
       let link_str = team_link.to_string();
       let key2 = key.clone();
+      let tn = team.name.clone();
       wasm_bindgen_futures::spawn_local(async move {
         let client = reqwest::Client::new();
         let _ = client
           .post(format!("https://ntfy.sh/nextgame-{}", key2))
-          .body(format!("Sign up for nextgame [{}]", team.name))
           .header("Click", &link_str)
           .header("Tags", "soccer")
           .header("Actions", format!("view, Sign up, {}, clear=true", &link_str))
+          .body(format!("Sign up for nextgame [{}]", tn))
           .send()
           .await
           .unwrap();
