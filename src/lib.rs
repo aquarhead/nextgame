@@ -479,8 +479,6 @@ async fn new_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
         ]
       });
 
-      console_log!("{}", body.to_string());
-
       wasm_bindgen_futures::spawn_local(async move {
         let client = reqwest::Client::new();
         let _ = client
