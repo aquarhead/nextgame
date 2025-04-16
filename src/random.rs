@@ -1,7 +1,7 @@
 pub fn hex_string() -> String {
   use sha3::{
-    digest::{ExtendableOutput, Update, XofReader},
     Shake128,
+    digest::{ExtendableOutput, Update, XofReader},
   };
   let mut buf = [0u8; 32];
   getrandom::getrandom(&mut buf).unwrap();

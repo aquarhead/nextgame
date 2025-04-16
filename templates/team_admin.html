@@ -18,6 +18,13 @@
   <section class="section">
     {% if team.next_game %}
     <div class="container is-max-desktop mb-2">
+      <div class="container is-max-desktop mb-2">
+        <a href="/team/{{ key }}">
+          <button class="button is-medium is-primary">
+            Goto nextgame!
+          </button>
+        </a>
+      </div>
       <form action="/admin/{{ key }}/{{ team.secret }}/reset_game" method="post">
         <div class="field">
           <div class="control">
@@ -27,6 +34,14 @@
           </div>
         </div>
       </form>
+    </div>
+    {% else %}
+    <div class="container is-max-desktop mb-2">
+      <a href="/team/{{ key }}">
+        <button type="submit" class="button is-medium is-primary">
+          Create nextgame!
+        </button>
+      </a>
     </div>
     {% endif %}
   </section>

@@ -32,15 +32,18 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
       with:
         targets: "wasm32-unknown-unknown"
+    - run: |
+        npm install
+    - uses: taiki-e/install-action@v2
+      with:
+        tool: just
     - name: Build
       run: |
-        npm install
-        npx wrangler deploy --dry-run
+        just build
     - name: Deploy
       if: ${{ github.ref_type == 'branch' && github.ref_name == 'master' }}
       env:
         CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         CLOUDFLARE_API_TOKEN: ${{ secrets.CF_TOKEN }}
       run: |
-        npm install
-        npx wrangler deploy
+        just deploy
