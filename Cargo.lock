@@ -729,9 +729,9 @@ dependencies = [
 
 [[package]]
 name = "minijinja-embed"
-version = "2.9.0"
+version = "2.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9afe707213910fda251ba541a34dd5592bec3432a5beb987a32e9ccb8eb6d6ae"
+checksum = "5de0eb34c22c5cfb9b22509599e3942aa1cdfa00884fa76ceccff4163f572c67"
 
 [[package]]
 name = "miniz_oxide"
