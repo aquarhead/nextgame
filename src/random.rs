@@ -4,7 +4,7 @@ pub fn hex_string() -> String {
     digest::{ExtendableOutput, Update, XofReader},
   };
   let mut buf = [0u8; 32];
-  getrandom::getrandom(&mut buf).unwrap();
+  getrandom::fill(&mut buf).unwrap();
 
   let mut hasher = Shake128::default();
   hasher.update(&buf);
