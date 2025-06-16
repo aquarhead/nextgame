@@ -37,6 +37,7 @@ jobs:
     - uses: taiki-e/install-action@v2
       with:
         tool: just
+    - run: cargo install -q worker-build
     - name: Build
       run: |
         just build
