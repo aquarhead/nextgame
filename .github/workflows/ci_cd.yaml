@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Build and Deploy master
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: Cache build
       uses: actions/cache@v4
       with:
