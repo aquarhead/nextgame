@@ -64,10 +64,12 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
     .post_async("/admin/:teamkey/:teamsecret/reset_game", reset_game)
     .get_async("/team/:teamkey", team)
     .post_async("/team/:teamkey/new_game", new_game)
+    .get_async("/team/:teamkey/playing_count", playing_count)
     .post_async("/team/:teamkey/player/:playerid/play", play)
     .post_async("/team/:teamkey/player/:playerid/not_play", not_play)
     .post_async("/team/:teamkey/comment", add_comment)
     .post_async("/team/:teamkey/guest", add_guest)
+    // .post_async("/team/:teamkey/guest_count", new_game)
     .post_async("/team/:teamkey/guest/:guest/delete", delete_guest)
     .run(req, env)
     .await
@@ -495,7 +497,40 @@ async fn new_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
   };
 }
 
-async fn play(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+async fn playing_count(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+  let key = ctx.param("teamkey").unwrap();
+
+  let teams_kv = ctx.kv("teams")?;
+  let games_kv = ctx.kv("games")?;
+
+  let team: Team = {
+    let t = teams_kv.get(key).text().await?;
+    if t.is_none() {
+      return Response::error("team not found", 404);
+    }
+    let t = t.unwrap();
+    serde_json::from_str(&t).unwrap()
+  };
+
+  if let Some(ng_key) = team.next_game {
+    let ng: Game = {
+      let g = games_kv.get(&ng_key).text().await?;
+      if g.is_none() {
+        return Response::error("game does not exist anymore", 404);
+      }
+      let g = g.unwrap();
+      serde_json::from_str(&g).unwrap()
+    };
+
+    let playing_count = ng.players.values().filter(|p| p.unwrap_or(false)).count() + ng.guests.len();
+
+    Response::from_html(playing_count.to_string())
+  } else {
+    Response::error("game not found", 404)
+  }
+}
+
+async fn play(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
   let key = ctx.param("teamkey").unwrap();
   let pid = ctx.param("playerid").unwrap();
 
@@ -528,12 +563,17 @@ async fn play(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       .execute()
       .await
     {
-      Ok(_) => {
-        let mut team_link = req.url()?.clone();
-        team_link.set_path(&format!("/team/{}", key));
-
-        Response::redirect(team_link)
-      }
+      Ok(_) => ctx
+        .data
+        .mje
+        .get_template("player-reg.html")
+        .unwrap()
+        .render(mjctx! {
+          key,
+          pid,
+          playing => true,
+        })
+        .map_or(Response::error("failed to render team page", 500), Response::from_html),
       Err(_) => Response::error("failed to set play", 500),
     }
   } else {
@@ -541,7 +581,7 @@ async fn play(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
   }
 }
 
-async fn not_play(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+async fn not_play(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
   let key = ctx.param("teamkey").unwrap();
   let pid = ctx.param("playerid").unwrap();
 
@@ -574,12 +614,17 @@ async fn not_play(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       .execute()
       .await
     {
-      Ok(_) => {
-        let mut team_link = req.url()?.clone();
-        team_link.set_path(&format!("/team/{}", key));
-
-        Response::redirect(team_link)
-      }
+      Ok(_) => ctx
+        .data
+        .mje
+        .get_template("player-reg.html")
+        .unwrap()
+        .render(mjctx! {
+          key,
+          pid,
+          playing => false,
+        })
+        .map_or(Response::error("failed to render team page", 500), Response::from_html),
       Err(_) => Response::error("failed to set not_play", 500),
     }
   } else {

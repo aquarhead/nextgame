@@ -20,7 +20,10 @@
       <div class="columns">
         <div class="column">
           <div class="box">
-            <h3 class="title">{{ playing_count }} playing!</h3>
+            <h3 class="title"><span hx-get="/team/{{ key }}/playing_count" hx-trigger="click from:body delay:200ms">{{
+                playing_count
+                }}</span>
+              playing!</h3>
             {% if ng.guests %}
             <p class="subtitle">including {{ ng.guests|length }} guests</p>
             {% endif %}
@@ -74,17 +77,8 @@
             <th class="is-two-thirds" scope="row">
               {{ name }}
             </th>
-            <td>
-              <form id="play-{{ pid }}" action="/team/{{ key }}/player/{{ pid }}/play" method="post"></form>
-              <form id="not-play-{{ pid }}" action="/team/{{ key }}/player/{{ pid }}/not_play" method="post"></form>
-              <button form="play-{{ pid }}" type="submit" class="button {% if playing is true %}is-info{% endif %}">
-                Yes
-              </button>
-
-              <button form="not-play-{{ pid }}" type="submit"
-                class="button {% if playing is false %}is-danger{% endif %}">
-                No
-              </button>
+            <td class="player-reg">
+              {% include 'player-reg.html' %}
             </td>
           </tr>
           {% endfor %}

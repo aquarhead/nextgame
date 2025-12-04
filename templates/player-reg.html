@@ -1,0 +1,9 @@
+<button hx-post="/team/{{ key }}/player/{{ pid }}/play" hx-target="closest .player-reg"
+  class="button {% if playing is true %}is-info{% endif %}">
+  Yes
+</button>
+
+<button hx-post="/team/{{ key }}/player/{{ pid }}/not_play" hx-target="closest .player-reg"
+  class="button {% if playing is false %}is-danger{% endif %}">
+  No
+</button>
