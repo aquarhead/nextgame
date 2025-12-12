@@ -27,11 +27,13 @@
             {% if ng.guests %}
             <p class="subtitle">including {{ ng.guests|length }} guests</p>
             {% endif %}
+            {% if description|length > 0 %}
             <div class="content has-background-light px-3 py-3">
               <!-- <blockquote class="py-3"> -->
               {{ description|safe }}
               <!-- </blockquote> -->
             </div>
+            {% endif %}
           </div>
         </div>
         <div class="column">
