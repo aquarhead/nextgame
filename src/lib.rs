@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use worker::*;
 // use worker_kv::{KvError, KvStore};
+use jiff::civil::{Date, Weekday};
 
 mod random;
 
@@ -19,6 +20,12 @@ struct Team {
   // NB: https://github.com/RReverser/serde-wasm-bindgen/issues/10
   // so currently we need to manually serde_json it
   players: HashMap<PlayerID, String>,
+  #[serde(default)]
+  location: Option<String>,
+  #[serde(default)]
+  time: Option<String>,
+  #[serde(default)]
+  weekly_schedule: Option<i8>,
 }
 
 // impl Team {
@@ -40,6 +47,8 @@ struct Game {
   guests: Vec<String>,
   #[serde(default)]
   comments: Vec<String>,
+  #[serde(default)]
+  date: Option<Date>,
 }
 
 struct AppCtx {
@@ -59,6 +68,7 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
     .get_async("/", home)
     .post_async("/new_team", new_team)
     .get_async("/admin/:teamkey/:teamsecret", admin)
+    .post_async("/admin/:teamkey/:teamsecret/settings", update_team)
     .post_async("/admin/:teamkey/:teamsecret/player", add_player)
     .post_async("/admin/:teamkey/:teamsecret/player/:playerid/delete", delete_player)
     .post_async("/admin/:teamkey/:teamsecret/reset_game", reset_game)
@@ -111,6 +121,9 @@ async fn new_team(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
     secret,
     next_game: None,
     players: HashMap::new(),
+    location: None,
+    time: None,
+    weekly_schedule: None,
   };
 
   return match ctx
@@ -167,6 +180,56 @@ async fn admin(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       Response::error("failed to render team_admin page", 500),
       Response::from_html,
     )
+}
+
+async fn update_team(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+  let auth_err = Response::error("team not found", 404);
+
+  let key = ctx.param("teamkey").unwrap();
+  let secret = ctx.param("teamsecret").unwrap();
+
+  let teams_kv = ctx.kv("teams")?;
+
+  let mut team: Team = {
+    let t = teams_kv.get(key).text().await?;
+    if t.is_none() {
+      return auth_err;
+    }
+    let t = t.unwrap();
+    serde_json::from_str(&t).unwrap()
+  };
+
+  if &team.secret != secret {
+    return auth_err;
+  }
+
+  let mut r = req.clone_mut()?;
+  let f = r.form_data().await?;
+  team.location = f
+    .get_field("location")
+    .and_then(|s| if s == "" { None } else { Some(s) });
+  team.time = f.get_field("time").and_then(|s| if s == "" { None } else { Some(s) });
+  team.weekly_schedule = f.get_field("weekly_schedule").and_then(|s| {
+    if let Ok(n) = s.parse::<i8>() {
+      if n >= 1 && n <= 7 { Some(n) } else { None }
+    } else {
+      None
+    }
+  });
+
+  return match teams_kv
+    .put(key, serde_json::to_string(&team).unwrap())?
+    .execute()
+    .await
+  {
+    Ok(_) => {
+      let mut admin_link = req.url()?.clone();
+      admin_link.set_path(&format!("/admin/{}/{}", key, secret));
+
+      Response::redirect(admin_link)
+    }
+    Err(_) => Response::error("failed to update team settings", 500),
+  };
 }
 
 async fn add_player(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
@@ -394,6 +457,8 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
         description,
         playing_count,
         players,
+        location => team.location,
+        time => team.time,
       })
       .map_or(Response::error("failed to render team page", 500), Response::from_html)
   } else {
@@ -436,6 +501,7 @@ async fn new_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
     players: HashMap::new(),
     guests: Vec::new(),
     comments: Vec::new(),
+    date: None,
   };
 
   let ng_key = random::hex_string();
@@ -459,37 +525,6 @@ async fn new_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
     Ok(_) => {
       let mut team_link = req.url()?.clone();
       team_link.set_path(&format!("/team/{}", key));
-
-      let mut map = HashMap::new();
-      map.insert("topic", format!("nextgame-{}", key));
-      map.insert("message", format!("Sign up for nextgame [{}]", team.name));
-      map.insert("tags", "soccer".to_string());
-      map.insert("click", team_link.to_string());
-
-      let body = json!({
-        "topic": format!("nextgame-{}", key),
-        "message": format!("Sign up for {}", team.name),
-        "tags": ["soccer"],
-        "click": team_link.to_string(),
-        "actions": [
-          {
-            "action": "view",
-            "label": "Sign up",
-            "url": team_link.to_string(),
-            "clear": true
-          }
-        ]
-      });
-
-      wasm_bindgen_futures::spawn_local(async move {
-        let client = reqwest::Client::new();
-        let _ = client
-          .post("https://ntfy.sh/")
-          .body(body.to_string())
-          .send()
-          .await
-          .unwrap();
-      });
 
       Response::redirect(team_link)
     }

@@ -25,7 +25,31 @@
                 }}</span>
               playing!</h3>
             {% if ng.guests %}
-            <p class="subtitle">including {{ ng.guests|length }} guests</p>
+            <p class="subtitle mb-2">including {{ ng.guests|length }} guests</p>
+            {% endif %}
+            {% if location %}
+            <div class="block mt-1 mb-1">
+              <span class="icon">
+                <i class="ph ph-map-pin-area"></i>
+              </span>
+              <span>{{ location }}</span>
+            </div>
+            {% endif %}
+            {% if ng.date %}
+            <div class="block mb-1">
+              <span class="icon">
+                <i class="ph ph-calendar-blank"></i>
+              </span>
+              <span>Date</span>
+            </div>
+            {% endif %}
+            {% if time %}
+            <div class="block mb-1">
+              <span class="icon">
+                <i class="ph ph-clock"></i>
+              </span>
+              <span>{{ time }}</span>
+            </div>
             {% endif %}
             {% if description|length > 0 %}
             <div class="content has-background-light px-3 py-3">

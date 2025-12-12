@@ -23,7 +23,7 @@ sha3 = { version = "0.10", default-features = false }
 hex = { version = "0.4" }
 pulldown-cmark = "0.13"
 urlencoding = "2"
-reqwest = "0.12"
+jiff = { version = "0.2", features = ["js", "serde"] }
 
 [profile.release]
 opt-level = "s"
