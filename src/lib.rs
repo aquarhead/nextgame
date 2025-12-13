@@ -357,7 +357,7 @@ async fn reset_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response>
   };
 }
 
-async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+async fn team(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
   let not_found = Response::error("team not found", 404);
 
   let key = ctx.param("teamkey").unwrap();
@@ -365,7 +365,7 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
   let teams_kv = ctx.kv("teams")?;
   let games_kv = ctx.kv("games")?;
 
-  let team: Team = {
+  let mut team: Team = {
     let t = teams_kv.get(key).text().await?;
     if t.is_none() {
       return not_found;
@@ -395,6 +395,52 @@ async fn team(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       let g = g.unwrap();
       serde_json::from_str(&g).unwrap()
     };
+
+    // Reset game if it's too old
+    if let Some(w) = team.weekly_schedule {
+      if let Some(d) = ng.date {
+        if (jiff::Zoned::now().date() - d).get_days() > 1 {
+          let new_game = Game {
+            description: String::new(),
+            players: HashMap::new(),
+            guests: Vec::new(),
+            comments: Vec::new(),
+            date: jiff::Zoned::now()
+              .date()
+              .series(1.days())
+              .take(7)
+              .find(|d| d.weekday() == Weekday::from_monday_one_offset(w).unwrap()),
+          };
+
+          let ng_key = random::hex_string();
+
+          if games_kv
+            .put(&ng_key, serde_json::to_string(&new_game).unwrap())?
+            .execute()
+            .await
+            .is_err()
+          {
+            return Response::error("failed to create next game", 500);
+          }
+
+          team.next_game = Some(ng_key);
+
+          return match teams_kv
+            .put(key, serde_json::to_string(&team).unwrap())?
+            .execute()
+            .await
+          {
+            Ok(_) => {
+              let mut team_link = req.url()?.clone();
+              team_link.set_path(&format!("/team/{}", key));
+
+              Response::redirect(team_link)
+            }
+            Err(_) => Response::error("failed to set next game for team", 500),
+          };
+        }
+      }
+    }
 
     // Populate unregistered players
     let tp_set: HashSet<_> = team.players.keys().cloned().collect();
