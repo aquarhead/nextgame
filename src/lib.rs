@@ -3,9 +3,9 @@ use std::collections::{HashMap, HashSet};
 
 use minijinja::{Environment as MiniJinjaEnv, context as mjctx};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use worker::*;
 // use worker_kv::{KvError, KvStore};
+use jiff::ToSpan;
 use jiff::civil::{Date, Weekday};
 
 mod random;
@@ -209,13 +209,9 @@ async fn update_team(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response
     .get_field("location")
     .and_then(|s| if s == "" { None } else { Some(s) });
   team.time = f.get_field("time").and_then(|s| if s == "" { None } else { Some(s) });
-  team.weekly_schedule = f.get_field("weekly_schedule").and_then(|s| {
-    if let Ok(n) = s.parse::<i8>() {
-      if n >= 1 && n <= 7 { Some(n) } else { None }
-    } else {
-      None
-    }
-  });
+  team.weekly_schedule = f
+    .get_field("weekly_schedule")
+    .and_then(|s| s.parse::<i8>().ok().filter(|n| *n >= 1 && *n <= 7));
 
   return match teams_kv
     .put(key, serde_json::to_string(&team).unwrap())?
@@ -501,7 +497,13 @@ async fn new_game(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
     players: HashMap::new(),
     guests: Vec::new(),
     comments: Vec::new(),
-    date: None,
+    date: team.weekly_schedule.map(|w| {
+      jiff::Zoned::now()
+        .date()
+        .series(1.days())
+        .find(|d| d.weekday() == Weekday::from_monday_one_offset(w).unwrap())
+        .unwrap()
+    }),
   };
 
   let ng_key = random::hex_string();

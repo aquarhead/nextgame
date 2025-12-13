@@ -42,14 +42,14 @@
                 <div class="control">
                   <div class="select">
                     <select name="weekly_schedule">
-                      <option value="0" {% if not team.weekday %}selected{% endif %}>Disabled</option>
-                      <option value="1" {% if team.weekday==1 %}selected{% endif %}>Monday</option>
-                      <option value="2" {% if team.weekday==2 %}selected{% endif %}>Tuesday</option>
-                      <option value="3" {% if team.weekday==3 %}selected{% endif %}>Wednesday</option>
-                      <option value="4" {% if team.weekday==4 %}selected{% endif %}>Thursday</option>
-                      <option value="5" {% if team.weekday==5 %}selected{% endif %}>Friday</option>
-                      <option value="6" {% if team.weekday==6 %}selected{% endif %}>Saturday</option>
-                      <option value="7" {% if team.weekday==7 %}selected{% endif %}>Sunday</option>
+                      <option value="0" {% if not team.weekly_schedule %}selected{% endif %}>Disabled</option>
+                      <option value="1" {% if team.weekly_schedule==1 %}selected{% endif %}>Monday</option>
+                      <option value="2" {% if team.weekly_schedule==2 %}selected{% endif %}>Tuesday</option>
+                      <option value="3" {% if team.weekly_schedule==3 %}selected{% endif %}>Wednesday</option>
+                      <option value="4" {% if team.weekly_schedule==4 %}selected{% endif %}>Thursday</option>
+                      <option value="5" {% if team.weekly_schedule==5 %}selected{% endif %}>Friday</option>
+                      <option value="6" {% if team.weekly_schedule==6 %}selected{% endif %}>Saturday</option>
+                      <option value="7" {% if team.weekly_schedule==7 %}selected{% endif %}>Sunday</option>
                     </select>
                   </div>
                 </div>
