@@ -85,10 +85,21 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
     .await
 }
 
-async fn home(_req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
-  let template = ctx.data.mje.get_template("home.html").unwrap();
+fn render_page<S: Serialize>(ctx: &RouteContext<AppCtx>, template_name: &str, context: S) -> Result<Response> {
+  ctx
+    .data
+    .mje
+    .get_template(format!("{}.html", template_name).as_str())
+    .unwrap()
+    .render(context)
+    .map_or(
+      Response::error(format!("failed to render {} page", template_name), 500),
+      Response::from_html,
+    )
+}
 
-  Response::from_html(template.render(mjctx!()).unwrap())
+async fn home(_req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
+  render_page(&ctx, "home", mjctx!())
 }
 
 async fn new_team(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
@@ -132,20 +143,15 @@ async fn new_team(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
     .execute()
     .await
   {
-    Ok(_) => {
-      let template = ctx.data.mje.get_template("new_team.html").unwrap();
-
-      template
-        .render(mjctx! {
-          team_name,
-          admin_link,
-          team_link,
-        })
-        .map_or(
-          Response::error("failed to render new_team page", 500),
-          Response::from_html,
-        )
-    }
+    Ok(_) => render_page(
+      &ctx,
+      "new_team",
+      mjctx! {
+        team_name,
+        admin_link,
+        team_link,
+      },
+    ),
     Err(_) => Response::error("failed to create team", 500),
   };
 }
@@ -169,17 +175,14 @@ async fn admin(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
     return auth_err;
   }
 
-  let template = ctx.data.mje.get_template("team_admin.html").unwrap();
-
-  template
-    .render(mjctx! {
+  render_page(
+    &ctx,
+    "team_admin",
+    mjctx! {
       key,
       team,
-    })
-    .map_or(
-      Response::error("failed to render team_admin page", 500),
-      Response::from_html,
-    )
+    },
+  )
 }
 
 async fn update_team(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
@@ -375,22 +378,18 @@ async fn team(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
   };
 
   if let Some(ng_key) = team.next_game {
-    let template = ctx.data.mje.get_template("team.html").unwrap();
-
     let mut ng: Game = {
       let g = games_kv.get(&ng_key).text().await?;
       if g.is_none() {
         // MAYBE: unset the next_game field on the Team?
-        return ctx
-          .data
-          .mje
-          .get_template("team_no_game.html")
-          .unwrap()
-          .render(mjctx! {
+        return render_page(
+          &ctx,
+          "team_no_game",
+          mjctx! {
             team_name => team.name,
             key,
-          })
-          .map_or(Response::error("failed to render team page", 500), Response::from_html);
+          },
+        );
       }
       let g = g.unwrap();
       serde_json::from_str(&g).unwrap()
@@ -490,8 +489,10 @@ async fn team(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       html_output
     };
 
-    template
-      .render(mjctx! {
+    render_page(
+      &ctx,
+      "team",
+      mjctx! {
         team_name => team.name,
         key,
         ng_key,
@@ -501,19 +502,17 @@ async fn team(req: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
         players,
         location => team.location,
         time => team.time,
-      })
-      .map_or(Response::error("failed to render team page", 500), Response::from_html)
+      },
+    )
   } else {
-    ctx
-      .data
-      .mje
-      .get_template("team_no_game.html")
-      .unwrap()
-      .render(mjctx! {
+    render_page(
+      &ctx,
+      "team_no_game",
+      mjctx! {
         team_name => team.name,
         key,
-      })
-      .map_or(Response::error("failed to render team page", 500), Response::from_html)
+      },
+    )
   }
 }
 
@@ -646,17 +645,15 @@ async fn play(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       .execute()
       .await
     {
-      Ok(_) => ctx
-        .data
-        .mje
-        .get_template("player-reg.html")
-        .unwrap()
-        .render(mjctx! {
+      Ok(_) => render_page(
+        &ctx,
+        "player-reg",
+        mjctx! {
           key,
           pid,
           playing => true,
-        })
-        .map_or(Response::error("failed to render team page", 500), Response::from_html),
+        },
+      ),
       Err(_) => Response::error("failed to set play", 500),
     }
   } else {
@@ -697,17 +694,15 @@ async fn not_play(_: Request, ctx: RouteContext<AppCtx>) -> Result<Response> {
       .execute()
       .await
     {
-      Ok(_) => ctx
-        .data
-        .mje
-        .get_template("player-reg.html")
-        .unwrap()
-        .render(mjctx! {
+      Ok(_) => render_page(
+        &ctx,
+        "player-reg",
+        mjctx! {
           key,
           pid,
           playing => false,
-        })
-        .map_or(Response::error("failed to render team page", 500), Response::from_html),
+        },
+      ),
       Err(_) => Response::error("failed to set not_play", 500),
     }
   } else {
