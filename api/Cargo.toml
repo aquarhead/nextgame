@@ -1,5 +1,5 @@
 [package]
-name = "nextgame"
+name = "nextgame-api"
 description = "Who's playing?!"
 authors = ["LOU Xun <aquarhead@gmail.com>"]
 repository = "https://github.com/aquarhead/nextgame"
@@ -16,13 +16,9 @@ worker-kv = "*"
 console_error_panic_hook = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "*"
-minijinja = "2"
-minijinja-embed = "2"
-getrandom = { version = "0.4", features = ["wasm_js"] }
+getrandom = { version = "0.3", features = ["wasm_js"] }
 sha3 = { version = "0.10", default-features = false }
 hex = { version = "0.4" }
-pulldown-cmark = "0.13"
-urlencoding = "2"
 jiff = { version = "0.2", features = ["js", "serde"] }
 
 [profile.release]
@@ -30,9 +26,6 @@ opt-level = "s"
 lto = true
 strip = true
 codegen-units = 1
-
-[build-dependencies]
-minijinja-embed = "2"
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false

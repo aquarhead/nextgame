@@ -1,15 +1,15 @@
 version: 2
 updates:
 - package-ecosystem: "cargo"
-  directory: "/"
+  directory: "/api"
   schedule:
     interval: "weekly"
-  groups:
-    minijinja:
-      patterns:
-        - "minijinja*"
 - package-ecosystem: "npm"
-  directory: "/"
+  directory: "/api"
+  schedule:
+    interval: "monthly"
+- package-ecosystem: "npm"
+  directory: "/web"
   schedule:
     interval: "monthly"
 - package-ecosystem: "github-actions"

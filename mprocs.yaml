@@ -1,0 +1,12 @@
+procs:
+  api:
+    shell: "just api dev"
+    stop:
+      send-keys: ["<C-c>"]
+  web:
+    shell: "just web dev"
+    stop:
+      send-keys: ["<C-c>"]
+  open:
+    shell: "open http://localhost:5173"
+    autostart: false

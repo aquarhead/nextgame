@@ -1,8 +1,11 @@
+mod api
+mod web
+
+alias d := dev
+
 dev:
-  npx wrangler dev
+  mprocs --config mprocs.yaml
 
-build:
-  npx wrangler deploy --dry-run
+build: api::build web::build
 
-deploy:
-  npx wrangler deploy
+deploy: api::deploy web::deploy

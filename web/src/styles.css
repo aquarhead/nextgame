@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+@theme {
+  --font-heading: "General Sans", sans-serif;
+  --font-body: "Satoshi", sans-serif;
+  --font-brand: "Corben", cursive;
+}
+
+:root {
+  --bg-color: #1f1f28;
+  --accent-cyan: #7e9cd8;
+  --accent-turquoise: #98bb6c;
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --accent-warning: #e6c384;
+  --accent-danger: #ff5d62;
+  --accent-submit: #7fb4ca;
+}
+
+body {
+  font-family: "Satoshi", sans-serif;
+  background-color: var(--bg-color);
+  color: #fff;
+  overflow-x: hidden;
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: "General Sans", sans-serif;
+}
+
+.font-brand {
+  font-family: var(--font-brand) !important;
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+}
+
+.mesh-bg {
+  background-image:
+    radial-gradient(at 0% 0%, hsla(199, 99%, 70%, 0.1) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(171, 100%, 41%, 0.1) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, hsla(210, 100%, 50%, 0.05) 0px, transparent 50%);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.drag-over {
+  border-color: var(--accent-cyan) !important;
+  background: rgba(102, 209, 255, 0.1) !important;
+}
+
+.prose-description p {
+  margin: 0.25em 0;
+}
+
+.prose-description p:first-child {
+  margin-top: 0;
+}
+
+.prose-description p:last-child {
+  margin-bottom: 0;
+}
+
+.prose-description a {
+  color: var(--accent-cyan);
+  text-decoration: underline;
+}
+
+.prose-description a:hover {
+  opacity: 0.8;
+}
+
+.prose-description strong {
+  color: inherit;
+  font-weight: 600;
+}
+
+.prose-description em {
+  font-style: italic;
+}
+
+.prose-description code {
+  padding: 0.1em 0.4em;
+  border-radius: 0.25em;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.9em;
+}
+
+.prose-description ul,
+.prose-description ol {
+  margin: 0.25em 0;
+  padding-left: 1.5em;
+}
+
+.prose-description li {
+  margin: 0.1em 0;
+}
+
+.prose-description ul {
+  list-style-type: disc;
+}
+
+.prose-description ol {
+  list-style-type: decimal;
+}
+
+.prose-description del {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.prose-description table {
+  border-collapse: collapse;
+  margin: 0.5em 0;
+}
+
+.prose-description th,
+.prose-description td {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.3em 0.6em;
+}
+
+.prose-description th {
+  font-weight: 600;
+}
+
+.prose-description input[type="checkbox"] {
+  margin-right: 0.4em;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-slow {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: .7;
+  }
+}

@@ -1,0 +1,8 @@
+dev:
+  pnpm dev
+
+build:
+  pnpm build
+
+deploy:
+  pnpm exec wrangler pages deploy dist --project-name=nextgame --branch=master --commit-dirty

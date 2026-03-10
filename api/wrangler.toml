@@ -1,6 +1,6 @@
 name = "nextgame"
 main = "build/worker/shim.mjs"
-compatibility_date = "2025-04-16"
+compatibility_date = "2026-03-10"
 
 [[kv_namespaces]]
 binding = "teams"
@@ -12,7 +12,7 @@ id = "2db8a216518d4e178d3d253957dd1459"
 
 [build]
 command = "cargo install -q worker-build && worker-build --release"
-watch_dir = ["src", "templates"]
+watch_dir = ["src"]
 
 [observability]
 enabled = true

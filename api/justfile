@@ -1,0 +1,8 @@
+dev:
+  pnpm exec wrangler dev
+
+build:
+  pnpm exec wrangler deploy --dry-run
+
+deploy:
+  pnpm exec wrangler deploy

@@ -1,0 +1,11 @@
+{
+  "devDependencies": {
+    "wrangler": "^4.51.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "workerd"
+    ]
+  }
+}
