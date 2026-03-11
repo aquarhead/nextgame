@@ -1,4 +1,4 @@
-import { For, createMemo } from "solid-js";
+import { Index, createMemo } from "solid-js";
 import type { PlayerID } from "../types";
 
 interface Props {
@@ -30,17 +30,17 @@ export default function PlayerRoster(props: Props) {
             </tr>
           </thead>
           <tbody class="divide-y divide-white/10">
-            <For each={sortedPlayers()}>
+            <Index each={sortedPlayers()}>
               {(player) => (
                 <tr class="group transition-colors hover:bg-white/5">
                   <td class="py-5 px-2">
-                    <span class="font-semibold text-lg text-slate-100">{player.name}</span>
+                    <span class="font-semibold text-lg text-slate-100">{player().name}</span>
                   </td>
                   <td class="py-5 px-2 text-right">
                     <div class="inline-flex p-1 bg-black/30 rounded-xl border border-white/10">
                       <button
-                        onClick={() => props.onPlay(player.id)}
-                        class={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${player.playing === true
+                        onClick={() => props.onPlay(player().id)}
+                        class={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${player().playing === true
                             ? "bg-cyan-500 text-white shadow-lg"
                             : "text-slate-500 hover:text-slate-300"
                           }`}
@@ -48,8 +48,8 @@ export default function PlayerRoster(props: Props) {
                         Yes
                       </button>
                       <button
-                        onClick={() => props.onNotPlay(player.id)}
-                        class={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${player.playing === false
+                        onClick={() => props.onNotPlay(player().id)}
+                        class={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${player().playing === false
                             ? "bg-rose-500/80 text-white shadow-lg"
                             : "text-slate-500 hover:text-slate-300"
                           }`}
@@ -60,7 +60,7 @@ export default function PlayerRoster(props: Props) {
                   </td>
                 </tr>
               )}
-            </For>
+            </Index>
           </tbody>
         </table>
       </div>
