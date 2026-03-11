@@ -16,9 +16,11 @@ export default function Header(props: Props) {
     <div class="glass-card px-5 py-3 rounded-3xl flex items-center gap-4 border-l-4 border-l-cyan-500 shrink-0">
       <div class="flex flex-col">
         <span class="text-2xl font-bold text-white">{props.playingCount + props.guestCount} playing!</span>
-        <span class="text-[10px] text-[var(--accent-cyan)] font-bold uppercase tracking-wider">
-          including {props.guestCount} guests
-        </span>
+        <Show when={props.guestCount > 0}>
+          <span class="text-[10px] text-[var(--accent-cyan)] font-bold uppercase tracking-wider">
+            including {props.guestCount} guests
+          </span>
+        </Show>
       </div>
       <Show when={props.location || props.date || props.time}>
         <div class="w-px h-10 bg-white/15" />
