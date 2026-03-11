@@ -1,12 +1,14 @@
 procs:
   api:
-    shell: "just api dev"
+    cwd: api
+    shell: "just dev"
     stop:
-      send-keys: ["<C-c>"]
+      send-keys: [ "<C-c>" ]
   web:
-    shell: "just web dev"
+    cwd: web
+    shell: "just dev"
     stop:
-      send-keys: ["<C-c>"]
+      send-keys: [ "<C-c>" ]
   open:
     shell: "open http://localhost:5173"
     autostart: false

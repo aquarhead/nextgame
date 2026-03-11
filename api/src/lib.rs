@@ -9,7 +9,7 @@ mod types;
 
 use types::{Game, NewTeamResponse, Team};
 
-const UI_DOMAIN: &str = "https://nextgame.pages.dev";
+const UI_DOMAIN: &str = "https://nextgame.aqd.is";
 
 const ALLOWED_ORIGINS: &[&str] = &[
     UI_DOMAIN,
