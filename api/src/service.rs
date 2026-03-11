@@ -115,6 +115,14 @@ pub fn save_squad_assignments(
 
 /// Apply settings from a JSON body to a team.
 pub fn apply_settings(team: &mut Team, body: &serde_json::Value) {
+    if let Some(name) = body.get("name") {
+        if let Some(n) = name.as_str() {
+            let n = n.trim();
+            if !n.is_empty() {
+                team.name = n.to_string();
+            }
+        }
+    }
     if let Some(loc) = body.get("location") {
         team.location = loc
             .as_str()
