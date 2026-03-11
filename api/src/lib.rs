@@ -130,6 +130,7 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
         .delete_async("/api/teams/:teamkey/guests/:idx", api_delete_guest)
         .post_async("/api/teams/:teamkey/new_game", api_new_game)
         .put_async("/api/teams/:teamkey/squads", api_save_squads)
+        .get_async("/api/teams/:teamkey/reminder.ics", api_reminder_ics)
         // --- API: admin ---
         .get_async("/api/admin/:teamkey/:teamsecret", api_admin)
         .put_async("/api/admin/:teamkey/:teamsecret/settings", api_update_settings)
@@ -527,6 +528,53 @@ async fn api_save_squads(req: Request, ctx: RouteContext<()>) -> Result<Response
     } else {
         error_json("game not found", 404, &o)
     }
+}
+
+async fn api_reminder_ics(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
+    let team = match get_team(&ctx).await? {
+        Some(t) => t,
+        None => return Response::error("not found", 404),
+    };
+    let game = match get_game(&ctx, &team).await? {
+        Some(g) => g,
+        None => return Response::error("no game", 404),
+    };
+    let date = match game.date {
+        Some(d) => d,
+        None => return Response::error("no date", 404),
+    };
+
+    use jiff::ToSpan;
+    let reminder = date.checked_sub(1.days()).unwrap();
+    let key = ctx.param("teamkey").unwrap();
+
+    let mut lines = vec![
+        "BEGIN:VCALENDAR".to_string(),
+        "VERSION:2.0".to_string(),
+        "PRODID:-//nextgame//EN".to_string(),
+        "BEGIN:VEVENT".to_string(),
+        format!(
+            "DTSTART;VALUE=DATE:{}{:02}{:02}",
+            reminder.year(),
+            reminder.month() as u8,
+            reminder.day()
+        ),
+        "RRULE:FREQ=WEEKLY".to_string(),
+        format!("SUMMARY:Sign up for {}", team.name),
+        format!("DESCRIPTION:{}/team/{}", UI_DOMAIN, key),
+    ];
+    if let Some(loc) = &team.location {
+        lines.push(format!("LOCATION:{}", loc));
+    }
+    lines.push("END:VEVENT".to_string());
+    lines.push("END:VCALENDAR".to_string());
+
+    let body = lines.join("\r\n");
+    let mut resp = Response::from_bytes(body.into_bytes())?;
+    let headers = resp.headers_mut();
+    let _ = headers.set("Content-Type", "text/calendar; charset=utf-8");
+    let _ = headers.set("Content-Disposition", "inline; filename=\"nextgame-reminder.ics\"");
+    Ok(resp)
 }
 
 // --- Admin API ---

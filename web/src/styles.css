@@ -153,6 +153,56 @@ h4 {
   margin-right: 0.4em;
 }
 
+.hint-popup {
+  animation: hint-fade-in 0.4s ease-out forwards;
+}
+
+@keyframes hint-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.hint-arrow {
+  width: 10px;
+  height: 10px;
+  background: var(--glass-bg);
+  border-top: 1px solid var(--glass-border);
+  border-left: 1px solid var(--glass-border);
+  transform: rotate(45deg);
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  margin-left: -5px;
+  z-index: 1;
+}
+
+.hint-wiggle {
+  animation: hint-wiggle 1s ease-in-out infinite;
+}
+
+@keyframes hint-wiggle {
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  25% {
+    transform: rotate(12deg);
+  }
+
+  75% {
+    transform: rotate(-12deg);
+  }
+}
+
 .animate-pulse-slow {
   animation: pulse-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
