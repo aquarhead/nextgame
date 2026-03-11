@@ -153,6 +153,7 @@ export default function Team() {
               <>
                 <Header
                   teamName={d().team_name}
+                  teamKey={params.key}
                   location={d().location}
                   time={d().time}
                   date={game()?.date ?? null}
