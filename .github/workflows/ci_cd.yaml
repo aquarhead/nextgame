@@ -18,7 +18,7 @@ jobs:
       with:
         version: 10
     - name: Restore cache
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@v6
       with:
         path: |
           ~/.cargo/bin/
@@ -55,7 +55,7 @@ jobs:
         (cd web && just deploy)
     - name: Save cache
       if: always()
-      uses: actions/cache/save@v5
+      uses: actions/cache/save@v6
       with:
         path: |
           ~/.cargo/bin/
