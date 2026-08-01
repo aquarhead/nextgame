@@ -37,7 +37,7 @@ jobs:
         targets: "wasm32-unknown-unknown"
     - run: cd api && pnpm install
     - run: cd web && pnpm install
-    - uses: taiki-e/install-action@v2
+    - uses: taiki-e/install-action@v2.85.4
       with:
         tool: just
     - run: cargo install -q worker-build
